@@ -1,0 +1,31 @@
+simulation:
+  duration_sec: 30
+  display_interval_sec: 0.5
+  packet_type: ping
+  target_ips:
+    - 8.8.8.8
+    - 1.1.1.1
+
+ue:
+  profiles:
+    - name: high_traffic
+      ue_count: 3
+      packet_arrival_rate: 2.0 # packet arrival rate
+      packet_size: 
+        distribution: uniform # uniform, normal, triangular
+        min: 1000 # bytes
+        max: 1500 # bytes
+    - name: low_traffic
+      ue_count: 3
+      packet_arrival_rate: 0.5
+      packet_size: 
+        distribution: uniform
+        min: 1000 # bytes
+        max: 1500 # bytes
+    - name: no_traffic
+      ue_count: 1
+      packet_arrival_rate: 0.0
+      packet_size: 
+        distribution: uniform
+        min: 0
+        max: 0

@@ -2,7 +2,7 @@ simulation:
   record_csv_path: log/packet_records.csv
   duration_sec: 20
   display_interval_sec: 1
-  packet_type: ping
+  packet_type: udp # ping, udp, tcp
   target_ips:
     - 8.8.8.8
     - 1.1.1.1
@@ -10,19 +10,19 @@ simulation:
 ue:
   profiles:
     - name: high_traffic
-      ue_count: 3
-      packet_arrival_rate: 2.0 # packet arrival rate
+      ue_count: 2
+      packet_arrival_rate: 20 # packet arrival rate
       packet_size: 
         distribution: uniform # uniform, normal, triangular
         min: 1000 # bytes
-        max: 1500 # bytes
+        max: 1400 # bytes
     - name: low_traffic
-      ue_count: 6
-      packet_arrival_rate: 0.5
+      ue_count: 7
+      packet_arrival_rate: 3
       packet_size: 
         distribution: uniform
-        min: 1000 # bytes
-        max: 1500 # bytes
+        min: 300 # bytes
+        max: 800 # bytes
     - name: no_traffic
       ue_count: 1
       packet_arrival_rate: 0.0

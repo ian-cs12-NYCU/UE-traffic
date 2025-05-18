@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 
 from config_parser import ParsedConfig
-from packet_sender.ping_utils import PingSender
+from packet_sender import get_packet_sender
 from ue_generator import UEProfile
 from display import Display
 from recorder import Recorder
@@ -38,9 +38,8 @@ class Simulator:
             print(f'[INFO] UE {ue.id} has a packet arrival rate of 0. Skipping simulation.')
             return
 
-        ping_sender = PingSender(
-            iface=iface,
-        )
+        packet_sender = get_packet_sender(self.packet_type, iface)
+        
         while True:
             wait = random.expovariate(ue.packet_arrival_rate)
             time.sleep(wait)
@@ -55,15 +54,17 @@ class Simulator:
                 return
 
             print(f"[{iface}] Sending {self.packet_type} to {target_ip} with size {payload_size} bytes.")
-            if self.packet_type == "ping":
-                ping_sender.send_ping(payload_size=payload_size, target_ip=target_ip)
-                self.recorder.record_packet(
-                    ue.id,
-                    iface,
-                    payload_size,
-                    # ping_sender.get_ping_latency(target_ip),
-                )
-                self.recorder.increment_ue_packet_cnt(ue.id)
+            packet_sender.send_packet(
+                target_ip=target_ip,
+                payload_size=payload_size,
+                target_port=9000  # 可為 None
+            )
+            self.recorder.record_packet(
+                ue.id,
+                iface,
+                payload_size,
+            )
+            self.recorder.increment_ue_packet_cnt(ue.id)
 
     def validate_ue_profiles(self):
         for ue in self.ue_profiles:

@@ -1,5 +1,6 @@
 from ping3 import ping
 import os
+from typing import Optional
 
 
 class PingSender:
@@ -8,7 +9,7 @@ class PingSender:
         if not os.path.exists(f"/sys/class/net/{iface}"):
             raise ValueError(f"Interface {iface} does not exist.")
 
-    def send_ping(self, payload_size: int = 0, target_ip: str = None):
+    def send_packet(self, *, target_ip: str, payload_size: int, target_port: Optional[int] = None):
         try:
             rtt = ping(
                 target_ip,

@@ -21,6 +21,7 @@ class ProfileConfig:
 
 @dataclass
 class SimulationConfig:
+    record_csv_path: str
     duration_sec: int
     display_interval_sec: int
     packet_type: str
@@ -37,6 +38,7 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
 
     sim = raw["simulation"]
     simulation = SimulationConfig(
+        record_csv_path=sim["record_csv_path"],
         duration_sec=sim["duration_sec"],
         display_interval_sec=sim["display_interval_sec"],
         packet_type=sim["packet_type"],

@@ -1,5 +1,6 @@
 simulation:
-  duration_sec: 60
+  record_csv_path: log/packet_records.csv
+  duration_sec: 10
   display_interval_sec: 3
   packet_type: ping
   target_ips:
@@ -16,7 +17,7 @@ ue:
         min: 1000 # bytes
         max: 1500 # bytes
     - name: low_traffic
-      ue_count: 3
+      ue_count: 6
       packet_arrival_rate: 0.5
       packet_size: 
         distribution: uniform

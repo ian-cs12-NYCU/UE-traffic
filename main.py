@@ -13,10 +13,7 @@ ue_profiles = generate_ue_profiles(cfg.profiles)
 # === Create Simulator instance ===
 sim = Simulator(
     ue_profiles = ue_profiles,
-    duration = cfg.simulation.duration_sec,
-    target_ips = cfg.simulation.target_ips,
-    packet_type = cfg.simulation.packet_type,
-    display_interval = cfg.simulation.display_interval_sec
+    cfg = cfg,
 )
 
 # === Run simulation and display ===

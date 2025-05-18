@@ -1,2 +1,4 @@
 PyYAML
 numpy
+pandas
+matplotlib

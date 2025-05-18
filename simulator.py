@@ -4,6 +4,8 @@ import threading
 import random
 import os
 from dataclasses import dataclass
+
+from config_parser import ParsedConfig
 from ping_utils import PingSender
 from ue_generator import UEProfile
 from display import Display
@@ -15,23 +17,20 @@ class Simulator:
     def __init__(
         self,
         ue_profiles: List[UEProfile],
-        duration: int,
-        target_ips: List[str],
-        packet_type: str,
-        display_interval: Optional[float] = 1.0
+        cfg: ParsedConfig,
     ):
         # Thread Management Variables
         self.lock = threading.Lock()
         self.threads: List[threading.Thread] = []
 
         self.ue_profiles = ue_profiles
-        self.duration = duration
-        self.target_ips = target_ips
-        self.packet_type = packet_type
+        self.duration = cfg.simulation.duration_sec
+        self.target_ips = cfg.simulation.target_ips
+        self.packet_type = cfg.simulation.packet_type
         self.start_time = time.time()
-        self.end_time = self.start_time + duration
-        self.recorder = Recorder(self.lock, self.ue_profiles)
-        self.display = Display(self.recorder, self.lock, display_interval)
+        self.end_time = self.start_time + self.duration
+        self.recorder = Recorder(self.lock, self.ue_profiles, cfg.simulation.record_csv_path)
+        self.display = Display(self.recorder, self.lock, cfg.simulation.display_interval_sec)
  
     def simulate_ue(self, ue: UEProfile):
         iface = f"uesimtun{ue.id}"
@@ -57,7 +56,13 @@ class Simulator:
             print(f"[{iface}] Sending {self.packet_type} to {target_ip} with size {payload_size} bytes.")
             if self.packet_type == "ping":
                 ping_sender.send_ping(payload_size=payload_size, target_ip=target_ip)
-                self.recorder.increment(ue.id)
+                self.recorder.record_packet(
+                    ue.id,
+                    iface,
+                    payload_size,
+                    # ping_sender.get_ping_latency(target_ip),
+                )
+                self.recorder.increment_ue_packet_cnt(ue.id)
 
     def validate_ue_profiles(self):
         for ue in self.ue_profiles:
@@ -71,7 +76,7 @@ class Simulator:
     # Monitoring the packet send by each UE
     def start_monitor(self) -> threading.Thread:
         
-        monitor_thread = threading.Thread(target=self.display.start_display, daemon=True,
+        monitor_thread = threading.Thread(target=self.display.start_live_bar_chart, daemon=True,
                                           args=())
         monitor_thread.start()
         return monitor_thread
@@ -98,4 +103,8 @@ class Simulator:
 
         # TODO: Display results
         # TODO: save results to file
+        self.recorder.save_csv()
+
+        # plot the scatter plot
+        self.display.plot_scatter_plot()
 

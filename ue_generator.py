@@ -40,7 +40,6 @@ def generate_ue_profiles(profiles: List[ProfileConfig]) -> List[UEProfile]:
 
 
         for i in range(profile.ue_count):
-            ue_id += 1
             packet_size = PacketSize(
                 min=profile.packet_size.min,
                 max=profile.packet_size.max,
@@ -54,6 +53,7 @@ def generate_ue_profiles(profiles: List[ProfileConfig]) -> List[UEProfile]:
                 packet_size=packet_size
             )
             ue_profiles.append(ue_profile)
+            ue_id += 1
 
     return ue_profiles
 

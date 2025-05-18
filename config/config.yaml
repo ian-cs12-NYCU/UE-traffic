@@ -1,7 +1,7 @@
 simulation:
   record_csv_path: log/packet_records.csv
-  duration_sec: 10
-  display_interval_sec: 3
+  duration_sec: 20
+  display_interval_sec: 1
   packet_type: ping
   target_ips:
     - 8.8.8.8
@@ -11,7 +11,7 @@ ue:
   profiles:
     - name: high_traffic
       ue_count: 3
-      packet_arrival_rate: 5.0 # packet arrival rate
+      packet_arrival_rate: 2.0 # packet arrival rate
       packet_size: 
         distribution: uniform # uniform, normal, triangular
         min: 1000 # bytes

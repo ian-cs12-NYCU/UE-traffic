@@ -27,7 +27,6 @@ class Display:
                 bar = "▇" * max(0, cnt // 2)
                 print(f"UE {id:<12}: {bar:<40} {cnt} pkt")
             time.sleep(self.interval)
-
     def plot_scatter_plot(self, csv_path: str = "log/packet_records.csv", save_path: str = "images/packet_timeline.png"):
         try:
             df = pd.read_csv(csv_path)
@@ -72,3 +71,55 @@ class Display:
         plt.tight_layout()
         plt.savefig(save_path, dpi=300)
         print(f"[Display] Packet timeline scatter plot saved to {save_path}")
+
+    def plot_scatter_and_volume_bar(
+            self,
+            csv_path="log/packet_records.csv", 
+            save_path="images/scatter_volume_subplot.png"):
+        df = pd.read_csv(csv_path)
+        df = df.dropna(subset=["timestamp", "ue_id", "size_bytes"])
+        df["timestamp"] = pd.to_numeric(df["timestamp"], errors="coerce")
+        df["size_bytes"] = pd.to_numeric(df["size_bytes"], errors="coerce")
+        df["ue_id"] = pd.to_numeric(df["ue_id"], errors="coerce").astype("Int64")
+        df["time_readable"] = pd.to_datetime(df["timestamp"], unit="s")
+
+        # Normalize dot size
+        min_size = df["size_bytes"].min()
+        max_size = df["size_bytes"].max()
+        df["point_size"] = 10 + 90 * (df["size_bytes"] - min_size) / (max_size - min_size + 1e-6)
+
+        # Volume sum
+        ue_volume = df.groupby("ue_id")["size_bytes"].sum()
+
+        # Plot
+        fig, (ax1, ax2) = plt.subplots(nrows=2, figsize=(12, 8), gridspec_kw={'height_ratios': [3, 1]}, sharex=False)
+
+        # Scatter plot (Time vs UE ID)
+        ax1.scatter(
+            df["time_readable"],
+            df["ue_id"],
+            s=df["point_size"],
+            c=df["ue_id"],
+            cmap="tab10",
+            alpha=0.6,
+            marker="s"
+        )
+        ax1.set_title("Packet Timeline per UE")
+        ax1.set_ylabel("UE ID")
+        ax1.grid(True)
+
+        # Bar chart (UE ID vs Total Volume)
+        ax2.bar(
+            ue_volume.index.astype(str),
+            ue_volume.values,
+            color="gray",
+            alpha=0.6
+        )
+        ax2.set_ylabel("Total Volume (bytes)")
+        ax2.set_xlabel("UE ID")
+        ax2.set_title("Total Sent Volume per UE")
+        ax2.grid(True, axis='y')
+
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=300)
+        print(f"[Display] Scatter + volume bar saved to {save_path}")

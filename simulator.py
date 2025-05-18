@@ -101,10 +101,8 @@ class Simulator:
             time.sleep(1)
         print("[INFO] Simulation completed.")
 
-        # TODO: Display results
         # TODO: save results to file
         self.recorder.save_csv()
 
-        # plot the scatter plot
-        self.display.plot_scatter_plot()
-
+        # TODO:plot the scatter plot
+        self.display.plot_scatter_and_volume_bar()

@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass
 
 from config_parser import ParsedConfig
-from ping_utils import PingSender
+from packet_sender.ping_utils import PingSender
 from ue_generator import UEProfile
 from display import Display
 from recorder import Recorder

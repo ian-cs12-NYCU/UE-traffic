@@ -41,12 +41,13 @@ class Simulator:
         ping_sender = PingSender(
             iface=iface,
         )
-        while time.time() < self.end_time:
+        while True:
             wait = random.expovariate(ue.packet_arrival_rate)
-            print(f"[{iface}] Waiting for {wait:.2f} seconds (arrival rate: {ue.packet_arrival_rate:.2f})")
             time.sleep(wait)
-            target_ip = random.choice(self.target_ips)
+            if time.time() > self.end_time:
+                break
 
+            target_ip = random.choice(self.target_ips)
             if ue.packet_size.distribution == "uniform":
                 payload_size = random.randint(ue.packet_size.min, ue.packet_size.max)
             else:

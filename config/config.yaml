@@ -1,6 +1,6 @@
 simulation:
-  duration_sec: 30
-  display_interval_sec: 0.5
+  duration_sec: 60
+  display_interval_sec: 3
   packet_type: ping
   target_ips:
     - 8.8.8.8
@@ -10,7 +10,7 @@ ue:
   profiles:
     - name: high_traffic
       ue_count: 3
-      packet_arrival_rate: 2.0 # packet arrival rate
+      packet_arrival_rate: 5.0 # packet arrival rate
       packet_size: 
         distribution: uniform # uniform, normal, triangular
         min: 1000 # bytes

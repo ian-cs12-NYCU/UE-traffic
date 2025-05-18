@@ -1,13 +1,23 @@
 import os
 import time
+from recorder import Recorder
+import threading
 
-def display_stats(ue_counters: dict, lock, interval: float = 1.0):
-    while True:
-        os.system('clear')
-        print("UE Packet Count Monitor")
-        print("=" * 40)
-        with lock:
-            for iface, count in sorted(ue_counters.items()):
-                bar = "▇" * max(0, count // 2)
-                print(f"{iface:<12}: {bar:<40} {count} pkt")
-        time.sleep(interval)
+class Display:
+    def __init__(self, recorder: Recorder, lock: threading.Lock,  interval: float = 1.0):
+        self.recorder = recorder
+        self.interval = interval
+        self.lock = lock
+
+    def start_display(self):
+        while True:
+            os.system('clear')
+            print("UE Packet Count Monitor")
+            print("=" * 40)
+            ue_packet_cnt = self.recorder.get_record()
+            
+            for id, cnt in ue_packet_cnt.items():
+                bar = "▇" * max(0, cnt // 2)
+                print(f"UE {id:<12}: {bar:<40} {cnt} pkt")
+            time.sleep(self.interval)
+

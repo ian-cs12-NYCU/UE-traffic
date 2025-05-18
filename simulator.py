@@ -4,9 +4,12 @@ import threading
 import random
 import os
 from dataclasses import dataclass
-from ping_utils import send_ping
+from ping_utils import PingSender
 from ue_generator import UEProfile
-from display import display_stats
+from display import Display
+from recorder import Recorder
+
+
 
 class Simulator:
     def __init__(
@@ -17,31 +20,33 @@ class Simulator:
         packet_type: str,
         display_interval: Optional[float] = 1.0
     ):
+        # Thread Management Variables
+        self.lock = threading.Lock()
+        self.threads: List[threading.Thread] = []
+
         self.ue_profiles = ue_profiles
         self.duration = duration
         self.target_ips = target_ips
         self.packet_type = packet_type
         self.start_time = time.time()
         self.end_time = self.start_time + duration
-        self.display_interval = 1.0
-
-        # 共用資源
-        self.ue_counters: Dict[str, int] = {f"uesimtun{ue.id}": 0 for ue in ue_profiles}
-        self.ue_latencies: Dict[str, List[float]] = {f"uesimtun{ue.id}": [] for ue in ue_profiles}
-        self.lock = threading.Lock()
-        self.threads: List[threading.Thread] = []
-
+        self.recorder = Recorder(self.lock, self.ue_profiles)
+        self.display = Display(self.recorder, self.lock, display_interval)
+ 
     def simulate_ue(self, ue: UEProfile):
         iface = f"uesimtun{ue.id}"
         if ue.packet_arrival_rate <= 0:
             print(f'[INFO] UE {ue.id} has a packet arrival rate of 0. Skipping simulation.')
             return
+
+        ping_sender = PingSender(
+            iface=iface,
+        )
         while time.time() < self.end_time:
             wait = random.expovariate(ue.packet_arrival_rate)
+            print(f"[{iface}] Waiting for {wait:.2f} seconds (arrival rate: {ue.packet_arrival_rate:.2f})")
             time.sleep(wait)
             target_ip = random.choice(self.target_ips)
-
-            
 
             if ue.packet_size.distribution == "uniform":
                 payload_size = random.randint(ue.packet_size.min, ue.packet_size.max)
@@ -51,15 +56,8 @@ class Simulator:
 
             print(f"[{iface}] Sending {self.packet_type} to {target_ip} with size {payload_size} bytes.")
             if self.packet_type == "ping":
-                send_ping(
-                    iface=iface,
-                    payload_size=payload_size,
-                    target_ip=target_ip,
-                    counter_dict=self.ue_counters,
-                    lock=self.lock,
-                    log_latency=True,
-                    latency_dict=self.ue_latencies
-                )
+                ping_sender.send_ping(payload_size=payload_size, target_ip=target_ip)
+                self.recorder.increment(ue.id)
 
     def validate_ue_profiles(self):
         for ue in self.ue_profiles:
@@ -72,8 +70,9 @@ class Simulator:
 
     # Monitoring the packet send by each UE
     def start_monitor(self) -> threading.Thread:
-        monitor_thread = threading.Thread(target=display_stats, daemon=True,
-                                          args=(self.ue_counters, self.lock, self.display_interval))
+        
+        monitor_thread = threading.Thread(target=self.display.start_display, daemon=True,
+                                          args=())
         monitor_thread.start()
         return monitor_thread
     
@@ -99,3 +98,4 @@ class Simulator:
 
         # TODO: Display results
         # TODO: save results to file
+

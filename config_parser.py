@@ -1,6 +1,5 @@
 from dataclasses import dataclass
-from typing import List
-from typing import Literal, List
+from typing import List, Literal, Optional
 import yaml
 from colorama import Fore, Style
 
@@ -10,6 +9,19 @@ class PacketSize:
     min: int
     max: int
 
+@dataclass
+class BurstRange:
+    min: float
+    max: float
+
+@dataclass
+class Burst:
+    enabled: bool
+    burst_chance: Optional[float] = None
+    burst_arrival_rate: Optional[float] = None
+    burst_on_duration: Optional[BurstRange] = None
+    burst_off_duration: Optional[BurstRange] = None
+
 
 @dataclass
 class ProfileConfig:
@@ -17,6 +29,7 @@ class ProfileConfig:
     ue_count: int
     packet_arrival_rate: float
     packet_size: PacketSize
+    burst: Burst
 
 
 @dataclass
@@ -47,6 +60,24 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
 
     profiles = []
     for p in raw["ue"]["profiles"]:
+        burst_config = p.get("burst", {})
+        if burst_config.get("enable", False):
+            burst = Burst(
+                enabled=True,
+                burst_chance=burst_config["burst_chance"],
+                burst_arrival_rate=burst_config["burst_arrival_rate"],
+                burst_on_duration=BurstRange(
+                    min=burst_config["burst_on_duration"]["min"],
+                    max=burst_config["burst_on_duration"]["max"]
+                ),
+                burst_off_duration=BurstRange(
+                    min=burst_config["burst_off_duration"]["min"],
+                    max=burst_config["burst_off_duration"]["max"]
+                )
+            )
+        else:
+            burst = Burst(enabled=False)
+
         profile = ProfileConfig(
             name=p["name"],
             ue_count=p["ue_count"],
@@ -55,9 +86,12 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
                 distribution=p["packet_size"]["distribution"],
                 min=p["packet_size"]["min"],
                 max=p["packet_size"]["max"]
-            )
+            ),
+            burst=burst
         )
+
         profiles.append(profile)
+
 
     return ParsedConfig(simulation=simulation, profiles=profiles)
 
@@ -76,4 +110,15 @@ if __name__ == "__main__":
         print(f"  Profile Name: {profile.name}") 
         print(Fore.GREEN + f"    UE Count: {profile.ue_count}" + Style.RESET_ALL)
         print(f"    Packet Arrival Rate: {profile.packet_arrival_rate} /s")
-        print(f"    Packet Size: {profile.packet_size.min} ~ {profile.packet_size.max} byets")
+        print(f"    Packet Size: {profile.packet_size.min} ~ {profile.packet_size.max} byets --- distribution: {profile.packet_size.distribution}")
+        print(f"    Burst Enabled: {profile.burst.enabled}")
+        if profile.burst.enabled:
+            print(f"    Burst Chance: {profile.burst.burst_chance}")
+            print(f"    Burst Arrival Rate: {profile.burst.burst_arrival_rate} /s")
+            print(f"    Burst On Duration: {profile.burst.burst_on_duration.min} ~ {profile.burst.burst_on_duration.max} sec")
+            print(f"    Burst Off Duration: {profile.burst.burst_off_duration.min} ~ {profile.burst.burst_off_duration.max} sec")
+        else:
+            print("    Burst: Disabled")
+    print(Style.RESET_ALL)
+    print("Configuration parsing completed successfully.")
+

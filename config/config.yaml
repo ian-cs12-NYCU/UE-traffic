@@ -1,7 +1,7 @@
 simulation:
   record_csv_path: log/packet_records.csv
-  duration_sec: 20
-  display_interval_sec: 1
+  duration_sec: 15
+  display_interval_sec: 0.2
   packet_type: udp # ping, udp, tcp
   target_ips:
     - 8.8.8.8
@@ -11,22 +11,45 @@ ue:
   profiles:
     - name: high_traffic
       ue_count: 2
-      packet_arrival_rate: 20 # packet arrival rate
+      packet_arrival_rate: 20
       packet_size: 
-        distribution: uniform # uniform, normal, triangular
-        min: 1000 # bytes
-        max: 1400 # bytes
+        distribution: uniform
+        min: 80
+        max: 160
+      burst:
+        enable: true
+        burst_chance: 0.4              # 機率進入 burst
+        burst_arrival_rate: 1000        # burst 狀態下的 λ
+        burst_on_duration:
+          min: 0.5
+          max: 1.5
+        burst_off_duration:
+          min: 2
+          max: 10
+    - name: mid_traffic
+      ue_count: 3
+      packet_arrival_rate: 10
+      packet_size: 
+        distribution: uniform
+        min: 1000
+        max: 1500
+      burst:
+        enable: true
+        burst_chance: 0.1              # 機率進入 burst
+        burst_arrival_rate: 100        # burst 狀態下的 λ
+        burst_on_duration:
+          min: 1.0
+          max: 2.0
+        burst_off_duration:
+          min: 10.0
+          max: 20.0
     - name: low_traffic
-      ue_count: 7
-      packet_arrival_rate: 3
+      ue_count: 4
+      packet_arrival_rate: 1
       packet_size: 
         distribution: uniform
-        min: 300 # bytes
-        max: 800 # bytes
-    - name: no_traffic
-      ue_count: 1
-      packet_arrival_rate: 0.0
-      packet_size: 
-        distribution: uniform
-        min: 0
-        max: 0
+        min: 50
+        max: 150
+      burst:
+        enable: false
+       

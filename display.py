@@ -60,7 +60,7 @@ class Display:
             s=df["point_size"],
             c=df["ue_id"],
             cmap="tab10",
-            alpha=0.6,
+            alpha=0.3,
             marker="s",
         )
         plt.xlabel("Time")

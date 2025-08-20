@@ -109,15 +109,20 @@ class Simulator:
                 return
 
             print(f"[{iface}] Sending {self.packet_type} to {target_ip} with size {payload_size} bytes.")
-            packet_sender.send_packet(
+            ret = packet_sender.send_packet(
                 target_ip=target_ip,
                 payload_size=payload_size,
                 target_port=9000  # 可為 None TODO: 應該從config 讀取
             )
+            print(f"[{iface}] {self.packet_type} sent successfully: {ret}")
             self.recorder.record_packet(
                 ue.id,
                 iface,
                 payload_size,
+                src_ip=ret['src_ip'],
+                dst_ip=ret['dst_ip'],
+                src_port=ret['src_port'],
+                dst_port=ret['dst_port']
             )
             self.recorder.increment_ue_packet_cnt(ue.id)
 

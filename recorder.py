@@ -61,6 +61,10 @@ class Recorder:
         ue_id: int,
         iface: str,
         size_bytes: int,
+        src_ip: str,
+        dst_ip: str,
+        src_port: Optional[int] = None,
+        dst_port: Optional[int] = None,
         latency_ms: Optional[float] = None
     ):
         with self.lock:
@@ -69,7 +73,11 @@ class Recorder:
                 "ue_id": ue_id,
                 "iface": iface,
                 "size_bytes": size_bytes,
-                "latency_ms": latency_ms
+                "latency_ms": latency_ms,
+                "src_ip": src_ip,
+                "dst_ip": dst_ip,
+                "src_port": src_port,
+                "dst_port": dst_port
             })
 
             # ue packet cnt (cache) record
@@ -85,6 +93,11 @@ class Recorder:
         if not self.packet_records:
             print("[ERROR] No packet records to save.")
             return
+        
+        # 印出self.packet_records前幾行
+        for record in self.packet_records[:5]:
+            print(f"[INFO] Packet Record: {record}")
+
         with open(self.csv_path, "w", newline="") as csvfile:
             fieldnames = self.packet_records[0].keys()
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

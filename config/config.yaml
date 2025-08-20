@@ -1,11 +1,15 @@
 simulation:
   record_csv_path: log/packet_records.csv
-  duration_sec: 15
+  duration_sec: 5 
   display_interval_sec: 0.2
   packet_type: udp # ping, udp, tcp
   target_ips:
     - 8.8.8.8
     - 1.1.1.1
+    - 2.2.2.2
+    - 3.3.3.3
+    - 4.4.4.4
+    - 5.5.5.5
 
 ue:
   profiles:
@@ -44,7 +48,7 @@ ue:
           min: 10.0
           max: 20.0
     - name: low_traffic
-      ue_count: 4
+      ue_count: 5
       packet_arrival_rate: 1
       packet_size: 
         distribution: uniform

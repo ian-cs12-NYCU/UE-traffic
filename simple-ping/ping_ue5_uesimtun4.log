@@ -1,0 +1,9 @@
+PING 8.8.8.8 (8.8.8.8) from 10.60.0.18 uesimtun4: 56(84) bytes of data.
+64 bytes from 8.8.8.8: icmp_seq=1 ttl=254 time=36.8 ms
+64 bytes from 8.8.8.8: icmp_seq=2 ttl=254 time=37.7 ms
+64 bytes from 8.8.8.8: icmp_seq=3 ttl=254 time=41.2 ms
+64 bytes from 8.8.8.8: icmp_seq=4 ttl=254 time=51.4 ms
+
+--- 8.8.8.8 ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3006ms
+rtt min/avg/max/mdev = 36.807/41.751/51.359/5.782 ms

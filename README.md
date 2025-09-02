@@ -9,16 +9,18 @@
 ```
 .
 ├── config/                 # 配置文件
-├── config_module/          # 配置解析模組
-├── ue_generator/          # UE生成器模組
-├── packet_sender/         # 封包發送模組
-├── traffic_replayer/      # 流量重播模組
-├── UDP_server/           # UDP伺服器
-├── simple-ping/          # 簡單ping功能
-├── main.py               # 主程式入口
-├── simulator.py          # 模擬器核心
-├── recorder.py           # 記錄器
-└── display.py            # 顯示功能
+├── lib/                    # 核心程式庫
+│   ├── config_module/      # 配置解析模組
+│   ├── ue_generator/       # UE生成器模組
+│   ├── packet_sender/      # 封包發送模組
+│   ├── simulator.py        # 模擬器核心
+│   ├── recorder.py         # 記錄器
+│   └── display.py          # 顯示功能
+├── traffic_replayer/       # 流量重播模組
+├── UDP_server/             # UDP伺服器
+├── simple-ping/            # 簡單ping功能
+├── main.py                 # 主程式入口
+└── requirements.txt        # 相依套件
 ```
 
 ## How to Start

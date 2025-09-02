@@ -1,24 +1,8 @@
 from ping3 import ping
 import os
 import socket
-import subprocess
 from typing import Optional
-
-
-def get_interface_ip(iface: str) -> Optional[str]:
-    """獲取指定介面的 IP 地址"""
-    try:
-        result = subprocess.run(['ip', 'addr', 'show', iface], 
-                              capture_output=True, text=True, check=True)
-        lines = result.stdout.split('\n')
-        for line in lines:
-            if 'inet ' in line and not line.strip().startswith('inet 127.'):
-                ip_part = line.strip().split('inet ')[1].split(' ')[0]
-                ip = ip_part.split('/')[0]
-                return ip
-    except:
-        pass
-    return None
+from .utils import get_interface_ip, check_interface_binding_permission
 
 
 class PingSender:
@@ -26,6 +10,10 @@ class PingSender:
         self.iface = iface
         if not os.path.exists(f"/sys/class/net/{iface}"):
             raise ValueError(f"Interface {iface} does not exist.")
+        
+        # 檢查是否有權限綁定到介面
+        if not check_interface_binding_permission():
+            raise PermissionError(f"Insufficient privileges to bind to interface '{iface}'. Please run with sudo.")
         
         # 在初始化時就獲取該 interface 的 IP 地址
         self.interface_ip = get_interface_ip(iface)
@@ -41,7 +29,7 @@ class PingSender:
                 target_ip,
                 timeout=1,
                 size=payload_size,
-                # interface=self.iface,  # 有些系統不支援此參數
+                interface=self.iface,  # 有些系統不支援此參數
                 unit="ms"
             )
             
@@ -76,13 +64,13 @@ class PingSender:
         except Exception as e:
             print(f"[{self.iface}] Ping failed: {e}")
             return {
+                'error message': str(e),
                 'src_ip': self.interface_ip,  # 使用預先獲取的 IP
                 'src_port': 0,
                 'dst_ip': target_ip,
                 'dst_port': 0,
                 'protocol': 'ICMP',
                 'success': False,
-                'error': str(e),
                 'latency_ms': None
             }
 

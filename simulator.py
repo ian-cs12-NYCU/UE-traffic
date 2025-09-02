@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from config_parser import ParsedConfig, Burst
 from packet_sender import get_packet_sender
+from packet_sender.utils import check_interface_binding_permission
 from ue_generator import UEProfile
 from display import Display
 from recorder import Recorder
@@ -62,7 +63,6 @@ class PoissonWaitGenerator:
             return float('inf')  # 等到世界末日
         return random.expovariate(current_rate)
 
-
 class Simulator:
     def __init__(
         self,
@@ -89,7 +89,16 @@ class Simulator:
             return
 
         # Get the packet sender based on the packet type and interface, ex: "pingSender", "tcpSender", "udpSender"
-        packet_sender = get_packet_sender(self.packet_type, iface)
+        try:
+            packet_sender = get_packet_sender(self.packet_type, iface)
+        except (PermissionError, OSError) as e:
+            print(f'[ERROR] Failed to initialize packet sender for UE {ue.id}: {e}')
+            print(f'[ERROR] UE {ue.id} simulation stopped.')
+            return
+        except Exception as e:
+            print(f'[ERROR] Unexpected error initializing packet sender for UE {ue.id}: {e}')
+            print(f'[ERROR] UE {ue.id} simulation stopped.')
+            return
         waiting_timer = PoissonWaitGenerator(
             arrival_rate=ue.packet_arrival_rate,
             burst_config=ue.burst
@@ -114,25 +123,36 @@ class Simulator:
                 payload_size=payload_size,
                 target_port=9000  # 可為 None TODO: 應該從config 讀取
             )
-            print(f"[{iface}] {self.packet_type} sent successfully: {ret}")
-            self.recorder.record_packet(
-                ue.id,
-                iface,
-                payload_size,
-                src_ip=ret['src_ip'],
-                dst_ip=ret['dst_ip'],
-                src_port=ret['src_port'],
-                dst_port=ret['dst_port']
-            )
-            self.recorder.increment_ue_packet_cnt(ue.id)
+
+            if ret['success'] is True:
+                print(f"[{iface}] {self.packet_type} sent successfully: {ret}")
+                # 只在成功時才記錄封包
+                self.recorder.record_packet(
+                    ue.id,
+                    iface,
+                    payload_size,
+                    src_ip=ret['src_ip'],
+                    dst_ip=ret['dst_ip'],
+                    src_port=ret['src_port'],
+                    dst_port=ret['dst_port']
+                )
+            else:
+                print(f"[{iface}] {self.packet_type} failed: {ret}")
+                break
 
     def validate_ue_profiles(self):
+        # 首先檢查是否有足夠的權限綁定到網路介面
+        if not check_interface_binding_permission():
+            print(f"[ERROR] ❌ Insufficient privileges to bind to network interfaces.")
+            print(f"[ERROR] ❌ ➡ Please run this program with sudo privileges: sudo python3 ")
+            return False
+        
         for ue in self.ue_profiles:
             iface = f"uesimtun{ue.id}"
             if not os.path.exists(f"/sys/class/net/{iface}"):
                 print(f"[ERROR] Interface '{iface}' does not exist. UE {ue.id} cannot be simulated. --> Exit!!!! ")
                 return False
-        print("[INFO] All interfaces exist. Proceeding with simulation.")
+        print("[INFO] All interfaces exist and permissions are sufficient. Proceeding with simulation.")
         return True
 
     # Monitoring the packet send by each UE
@@ -163,10 +183,10 @@ class Simulator:
             time.sleep(1)
         print("[INFO] Simulation completed.")
 
-        # TODO: save results to file
+        # save results to file
         self.recorder.save_csv()
 
-        # TODO:plot the scatter plot
+        # plot the scatter plot
         self.display.plot_scatter_and_volume_bar()
 
 

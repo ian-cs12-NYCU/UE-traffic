@@ -1,27 +1,8 @@
 import socket
 import os
 import random
-import subprocess
 from typing import Optional
-
-
-def get_interface_ip(iface: str) -> Optional[str]:
-    """獲取指定介面的 IP 地址"""
-    try:
-        # 使用 ip 命令獲取介面 IP
-        result = subprocess.run(['ip', 'addr', 'show', iface], 
-                              capture_output=True, text=True, check=True)
-        lines = result.stdout.split('\n')
-        for line in lines:
-            if 'inet ' in line and not line.strip().startswith('inet 127.'):
-                # 提取 IP 地址 (格式: inet 192.168.1.100/24 ...)
-                ip_part = line.strip().split('inet ')[1].split(' ')[0]
-                ip = ip_part.split('/')[0]  # 移除網路遮罩
-                return ip
-    except (subprocess.CalledProcessError, IndexError, AttributeError):
-        pass
-    
-    return None
+from .utils import get_interface_ip, bind_socket_to_interface
 
 
 class UDPSender:
@@ -38,14 +19,14 @@ class UDPSender:
         else:
             print(f"[INFO] Interface '{iface}' IP: {self.interface_ip}")
 
-        # 建立 UDP socket
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # 初始化時創建並綁定 UDP socket
+        self._setup_socket()
 
-        # 可選：綁定 interface（這行需要 root，否則請註解掉）
-        try:
-            self.sock.setsockopt(socket.SOL_SOCKET, 25, iface.encode())  # 25 = SO_BINDTODEVICE
-        except PermissionError:
-            print(f"[WARN] Cannot bind to interface '{iface}' (need root), using default route")
+    def _setup_socket(self):
+        """創建並綁定到指定介面的 UDP socket"""
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        # 使用嚴格模式，如果綁定失敗會拋出異常
+        bind_socket_to_interface(self.sock, self.iface, strict=True)
 
     def send_packet(self, *, target_ip: str, payload_size: int, target_port: Optional[int] = None):
         try:

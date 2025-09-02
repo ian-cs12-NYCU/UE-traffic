@@ -2,24 +2,8 @@ import socket
 import os
 import random
 import time
-import subprocess
 from typing import Optional
-
-
-def get_interface_ip(iface: str) -> Optional[str]:
-    """獲取指定介面的 IP 地址"""
-    try:
-        result = subprocess.run(['ip', 'addr', 'show', iface], 
-                              capture_output=True, text=True, check=True)
-        lines = result.stdout.split('\n')
-        for line in lines:
-            if 'inet ' in line and not line.strip().startswith('inet 127.'):
-                ip_part = line.strip().split('inet ')[1].split(' ')[0]
-                ip = ip_part.split('/')[0]
-                return ip
-    except:
-        pass
-    return None
+from .utils import get_interface_ip, bind_socket_to_interface
 
 
 class TCPSender:
@@ -36,21 +20,21 @@ class TCPSender:
         else:
             print(f"[INFO] Interface '{iface}' IP: {self.interface_ip}")
 
+    def _create_bound_socket(self) -> socket.socket:
+        """創建並綁定到指定介面的 TCP socket"""
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(3)  # 3秒超時
+        bind_socket_to_interface(sock, self.iface)
+        return sock
+
     def send_packet(self, *, target_ip: str, payload_size: int, target_port: Optional[int] = None):
         """
         發送 TCP 封包並返回 5-tuple 信息
         """
         sock = None
         try:
-            # 創建 TCP socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)  # 5秒超時
-            
-            # 可選：綁定 interface（需要 root 權限）
-            try:
-                sock.setsockopt(socket.SOL_SOCKET, 25, self.iface.encode())  # SO_BINDTODEVICE
-            except (PermissionError, OSError):
-                pass  # 沒有權限或系統不支援，使用預設路由
+            # 創建並綁定 TCP socket
+            sock = self._create_bound_socket()
             
             # 連接到目標
             sock.connect((target_ip, target_port))

@@ -12,9 +12,6 @@ from ue_generator import UEProfile
 from display import Display
 from recorder import Recorder
 
-import random
-import time
-
 class PoissonWaitGenerator:
     def __init__(self, 
                  arrival_rate, 

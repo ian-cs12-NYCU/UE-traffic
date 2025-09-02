@@ -2,13 +2,13 @@ import threading
 import random
 import os
 import time
-from config_parser import parse_config
+from config_module import parse_config
 from ue_generator import generate_ue_profiles
 from simulator import Simulator
 
 # === Load parsed config ===
 cfg = parse_config()
-ue_profiles = generate_ue_profiles(cfg.profiles)
+ue_profiles = generate_ue_profiles(cfg)
 
 # === Create Simulator instance ===
 sim = Simulator(

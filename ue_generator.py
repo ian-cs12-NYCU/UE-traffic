@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from typing import Literal, List
+from typing import Literal, List, Dict
 from enum import Enum
 import random
-from config_parser import ProfileConfig, Burst  #  importing from config_parser.py
+from config_module import ProfileConfig, Burst, ParsedConfig  # 更新導入路徑
 
 class TrafficClass(Enum):
     HIGH = "high"
@@ -25,11 +25,22 @@ class UEProfile:
     packet_size: PacketSize
     burst: Burst
 
-def generate_ue_profiles(profiles: List[ProfileConfig]) -> List[UEProfile]:
+def generate_ue_profiles(config: ParsedConfig) -> List[UEProfile]:
+    """Generate UE profiles based on allocation and profile configurations"""
     ue_profiles = []
     ue_id = 0
-    for profile in profiles:
-       # switch
+    
+    # Create a mapping from profile names to profile configs
+    profile_map = {profile.name: profile for profile in config.profiles}
+    
+    # Generate UEs according to allocation
+    for profile_name, ue_count in config.ue_allocation.distribution.items():
+        if profile_name not in profile_map:
+            raise ValueError(f"Profile '{profile_name}' in allocation not found in profiles")
+        
+        profile = profile_map[profile_name]
+        
+        # Determine traffic class
         if profile.name == "high_traffic":
             traffic_class = TrafficClass.HIGH
         elif profile.name == "low_traffic":
@@ -39,8 +50,8 @@ def generate_ue_profiles(profiles: List[ProfileConfig]) -> List[UEProfile]:
         else:
             traffic_class = TrafficClass.NONE
 
-
-        for i in range(profile.ue_count):
+        # Generate specified number of UEs for this profile
+        for i in range(ue_count):
             packet_size = PacketSize(
                 min=profile.packet_size.min,
                 max=profile.packet_size.max,
@@ -60,20 +71,19 @@ def generate_ue_profiles(profiles: List[ProfileConfig]) -> List[UEProfile]:
     return ue_profiles
 
 if __name__ == "__main__":
-    from config_parser import BurstRange
-    # Example usage
-    profiles = [
-        ProfileConfig(name="high_traffic", ue_count=3, packet_arrival_rate=2, 
-                      packet_size=PacketSize(min=64, max=128, distribution="uniform"), 
-                      burst=Burst(enabled=True, burst_chance=0.5, burst_arrival_rate=1.0, burst_on_duration=BurstRange(min=0.1, max=0.5), burst_off_duration=BurstRange(min=0.2, max=0.6))),
-        ProfileConfig(name="mid_traffic", ue_count=1, packet_arrival_rate=0.3, 
-                      packet_size=PacketSize(min=256, max=512, distribution="uniform"),
-                      burst=Burst(enabled=False)),
-        ProfileConfig(name="low_traffic", ue_count=3, packet_arrival_rate=0.1, 
-                      packet_size=PacketSize(min=128, max=256, distribution="uniform"), 
-                      burst=Burst(enabled=False)),
-    ]
-
-    ue_profiles = generate_ue_profiles(profiles)
+    from config_module import parse_config
+    
+    # Example usage with new config structure
+    config = parse_config("config/config.yaml")
+    
+    print("Configuration loaded:")
+    print(f"Total UEs: {config.ue_allocation.total_count}")
+    print("Distribution:")
+    for name, count in config.ue_allocation.distribution.items():
+        print(f"  {name}: {count}")
+    
+    ue_profiles = generate_ue_profiles(config)
+    
+    print(f"\nGenerated {len(ue_profiles)} UE profiles:")
     for profile in ue_profiles:
-        print(profile)
+        print(f"UE {profile.id}: {profile.profile_name} ({profile.traffic_class.value})")

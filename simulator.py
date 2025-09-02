@@ -5,7 +5,7 @@ import random
 import os
 from dataclasses import dataclass
 
-from config_parser import ParsedConfig, Burst
+from config_module import ParsedConfig, Burst
 from packet_sender import get_packet_sender
 from packet_sender.utils import check_interface_binding_permission
 from ue_generator import UEProfile
@@ -191,7 +191,7 @@ class Simulator:
 
 
 if __name__ == "__main__":
-    from config_parser import BurstRange
+    from config_module import BurstRange
 
     profiles = [
         {

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 from ..config_module import ParsedConfig, Burst
 from ..packet_sender import get_packet_sender
-from ..packet_sender.utils import check_interface_binding_permission
+from ..packet_sender.utils import check_interface_binding_permission, format_interface_name
 from ..ue_generator import UEProfile
 from ..display import Display
 from ..recorder import Recorder
@@ -74,13 +74,16 @@ class Simulator:
         self.duration = cfg.simulation.duration_sec
         self.target_ips = cfg.simulation.target_ips
         self.packet_type = cfg.simulation.packet_type
+        # keep full config for building interface names
+        self.cfg = cfg
         self.start_time = time.time()
         self.end_time = self.start_time + self.duration
         self.recorder = Recorder(self.lock, self.ue_profiles, cfg.simulation.record_csv_path)
         self.display = Display(self.recorder, self.lock, cfg.simulation.display_interval_sec)
  
     def simulate_ue(self, ue: UEProfile):
-        iface = f"uesimtun{ue.id}"
+        # 根據 simulator type 建立介面名稱
+        iface = format_interface_name(self.cfg.simulation.ue_simulator_type, ue.id)
         if ue.packet_arrival_rate <= 0:
             print(f'[INFO] UE {ue.id} has a packet arrival rate of 0. Skipping simulation.')
             return
@@ -144,12 +147,28 @@ class Simulator:
             print(f"[ERROR] ❌ ➡ Please run this program with sudo privileges: sudo python3 ")
             return False
         
+        # 根據 simulator type 建立並驗證介面名稱
+        # 不存在的介面會被標記，但不會直接退出
+        valid_ues = []
+        skipped_ues = []
+        
         for ue in self.ue_profiles:
-            iface = f"uesimtun{ue.id}"
+            iface = format_interface_name(self.cfg.simulation.ue_simulator_type, ue.id)
             if not os.path.exists(f"/sys/class/net/{iface}"):
-                print(f"[ERROR] Interface '{iface}' does not exist. UE {ue.id} cannot be simulated. --> Exit!!!! ")
-                return False
-        print("[INFO] All interfaces exist and permissions are sufficient. Proceeding with simulation.")
+                print(f"[WARN] ⚠ Interface '{iface}' does not exist. UE {ue.id} will be skipped.")
+                skipped_ues.append(ue)
+            else:
+                valid_ues.append(ue)
+        
+        # 更新 ue_profiles 只保留有效的 UE
+        self.ue_profiles = valid_ues
+        
+        if len(self.ue_profiles) == 0:
+            print(f"[ERROR] ❌ No valid interfaces found. Cannot proceed with simulation.")
+            return False
+        
+        print(f"[INFO] ✓ Found {len(valid_ues)} valid interface(s), {len(skipped_ues)} skipped.")
+        print("[INFO] All permissions are sufficient. Proceeding with simulation.")
         return True
 
     # Monitoring the packet send by each UE

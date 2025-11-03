@@ -54,6 +54,35 @@ def get_interface_ip(iface: str) -> Optional[str]:
     return None
 
 
+def format_interface_name(simulator_type: str, id_val: int) -> str:
+    """
+    根據 UE simulator 類型格式化介面名稱
+    
+    Args:
+        simulator_type: 'ueransim' 或 'packetrusher'
+        id_val: UE 的數字 id
+        
+    Returns:
+        組合後的介面名稱字串
+        - ueransim: uesimtun0, uesimtun1, uesimtun2, ...
+        - packetrusher: val0000000001, val0000000009, val0000000010, val9999999999
+                       (always 'val' prefix + exactly 10 digits with zero-padding)
+    
+    Raises:
+        ValueError: 當 packetrusher id 超過 10 位數時
+    """
+    if simulator_type == "ueransim":
+        return f"uesimtun{id_val}"
+    elif simulator_type == "packetrusher":
+        # packetrusher 永遠使用 val + 10 位數字（zero-padded）
+        if id_val > 9999999999:  # 超過 10 位數
+            raise ValueError(f"PacketRusher interface id {id_val} exceeds maximum (9999999999)")
+        return f"val{id_val:010d}"  # :010d = zero-pad to 10 digits
+    else:
+        # 預設使用 ueransim 格式
+        return f"uesimtun{id_val}"
+
+
 def bind_socket_to_interface(sock: socket.socket, iface: str, strict: bool = True) -> bool:
     """
     將 socket 綁定到指定的網路介面
@@ -92,3 +121,61 @@ def bind_socket_to_interface(sock: socket.socket, iface: str, strict: bool = Tru
         if strict:
             raise Exception(error_msg) from e
         return False
+
+
+if __name__ == "__main__":
+    """
+    測試介面命名功能
+    執行方式: python -m lib.packet_sender.utils
+    """
+    print("=" * 60)
+    print("UE 介面命名測試")
+    print("=" * 60)
+    
+    # 測試 PacketRusher 格式
+    print("\n【PacketRusher 格式】val + 10位數字 (zero-padded)")
+    print("-" * 60)
+    test_cases_pr = [
+        (0, "val0000000000"),
+        (1, "val0000000001"),
+        (4, "val0000000004"),
+        (9, "val0000000009"),
+        (10, "val0000000010"),
+        (99, "val0000000099"),
+        (100, "val0000000100"),
+        (9999999999, "val9999999999"),
+    ]
+    
+    for id_val, expected in test_cases_pr:
+        result = format_interface_name("packetrusher", id_val)
+        status = "✓" if result == expected else "✗"
+        print(f"  {status} id={id_val:10d} -> {result:15s} (expected: {expected})")
+    
+    # 測試 UERANSIM 格式
+    print("\n【UERANSIM 格式】uesimtun + 數字 (無固定長度)")
+    print("-" * 60)
+    test_cases_ue = [
+        (0, "uesimtun0"),
+        (1, "uesimtun1"),
+        (4, "uesimtun4"),
+        (10, "uesimtun10"),
+        (99, "uesimtun99"),
+    ]
+    
+    for id_val, expected in test_cases_ue:
+        result = format_interface_name("ueransim", id_val)
+        status = "✓" if result == expected else "✗"
+        print(f"  {status} id={id_val:2d} -> {result:12s} (expected: {expected})")
+    
+    # 測試邊界情況
+    print("\n【邊界測試】")
+    print("-" * 60)
+    try:
+        format_interface_name("packetrusher", 10000000000)
+        print("  ✗ 應該要拋出 ValueError (id > 9999999999)")
+    except ValueError as e:
+        print(f"  ✓ 正確拋出 ValueError: {e}")
+    
+    print("\n" + "=" * 60)
+    print("測試完成！")
+    print("=" * 60)

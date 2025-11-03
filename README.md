@@ -39,6 +39,15 @@ sudo pip3 install -r requirement.txt
 sudo python3 main.py
 ```
 
+或是在 venv 中使用
+```
+$ python3 -m venv --prompt UE-traffic .venv
+$ .venv/bin/activate
+(UE-traffic) $ pip3 install -r requirements.txt 
+(UE-traffic) $ sudo /home/vagrant/UE-traffic/.venv/bin/python3 main.py
+
+```
+
 若只需要基本多UE ping 功能，不需要流量控制，可以使用 simple-ping/ 目錄下的 ```./multilple.sh```
 
 ### UDP 版本

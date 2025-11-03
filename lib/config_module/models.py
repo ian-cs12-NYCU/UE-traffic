@@ -43,6 +43,10 @@ class SimulationConfig:
     display_interval_sec: int
     packet_type: str
     target_ips: List[str]
+    # UE simulator type determines interface naming: 'ueransim' or 'packetrusher'
+    ue_simulator_type: Literal["ueransim", "packetrusher"] = "packetrusher"
+    # Interface ID 起始編號（第一個 UE 使用的 interface id）
+    interface_id_start: int = 4
 
 @dataclass
 class ParsedConfig:

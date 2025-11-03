@@ -11,6 +11,18 @@ simulation:
     - 4.4.4.4
     - 5.5.5.5
 
+  # UE simulator type: 'ueransim' or 'packetrusher'
+  # This determines the interface naming convention
+  # ueransim: uesimtun0, uesimtun1, ...
+  # packetrusher: val0000000001, val0000000002, ..., val0000000009, val0000000010, val9999999999
+  #               (always val + exactly 10 digits, zero-padded)
+  ue_simulator_type: packetrusher
+  
+  # Interface ID 起始編號 (0-based index)
+  # 例如設定為 4，則第一個 UE 使用 id=4 (val0000000004)，第二個使用 id=5，以此類推
+  # 如果對應的介面不存在，該 UE 會被跳過而不會報錯退出
+  interface_id_start: 4
+
 ue:
   allocation:
     total_count: 1

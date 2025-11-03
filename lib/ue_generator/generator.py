@@ -28,7 +28,8 @@ class UEProfile:
 def generate_ue_profiles(config: ParsedConfig) -> List[UEProfile]:
     """Generate UE profiles based on allocation and profile configurations"""
     ue_profiles = []
-    ue_id = 0
+    # 使用 interface_id_start 作為起始 id
+    ue_id = config.simulation.interface_id_start
     
     # Create a mapping from profile names to profile configs
     profile_map = {profile.name: profile for profile in config.profiles}

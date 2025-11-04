@@ -42,7 +42,7 @@ class SimulationConfig:
     duration_sec: int
     display_interval_sec: int
     packet_type: str
-    target_ips: List[str]
+    target_subnets: List[str]  # CIDR 網段列表，例如 ["10.201.10.0/24", "192.168.1.0/24"]
     # UE simulator type determines interface naming: 'ueransim' or 'packetrusher'
     ue_simulator_type: Literal["ueransim", "packetrusher"] = "packetrusher"
     # Interface ID 起始編號（第一個 UE 使用的 interface id）

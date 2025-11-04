@@ -3,13 +3,10 @@ simulation:
   duration_sec: 60 
   display_interval_sec: 5
   packet_type: udp # ping, udp, tcp
-  target_ips:
-    - 8.8.8.8
-    - 1.1.1.1
-    - 2.2.2.2
-    - 3.3.3.3
-    - 4.4.4.4
-    - 5.5.5.5
+  # 支援 CIDR 網段表示法，例如 10.201.10.0/24
+  # 流量會均勻分布到網段內的所有 IP 地址
+  target_subnets:
+    - 10.201.10.0/24
 
   # UE simulator type: 'ueransim' or 'packetrusher'
   # This determines the interface naming convention
@@ -21,18 +18,18 @@ simulation:
   # Interface ID 起始編號 (0-based index)
   # 例如設定為 4，則第一個 UE 使用 id=4 (val0000000004)，第二個使用 id=5，以此類推
   # 如果對應的介面不存在，該 UE 會被跳過而不會報錯退出
-  interface_id_start: 4
+  interface_id_start: 1
 
 ue:
   allocation:
-    total_count: 1
+    total_count: 5
     distribution:
-      high_traffic: 0
+      high_traffic: 5
       mid_traffic: 0
-      low_traffic: 1
+      low_traffic: 0
   profiles:
     - name: high_traffic
-      packet_arrival_rate: 20
+      packet_arrival_rate: 8
       packet_size: 
         distribution: uniform
         min: 80
@@ -40,7 +37,7 @@ ue:
       burst:
         enable: true
         burst_chance: 0.4              # 機率進入 burst
-        burst_arrival_rate: 1000        # burst 狀態下的 λ
+        burst_arrival_rate: 20        # burst 狀態下的 λ
         burst_on_duration:
           min: 0.5
           max: 1.5
@@ -48,7 +45,7 @@ ue:
           min: 2
           max: 10
     - name: mid_traffic
-      packet_arrival_rate: 10
+      packet_arrival_rate: 3
       packet_size: 
         distribution: uniform
         min: 1000
@@ -56,7 +53,7 @@ ue:
       burst:
         enable: true
         burst_chance: 0.1              # 機率進入 burst
-        burst_arrival_rate: 100        # burst 狀態下的 λ
+        burst_arrival_rate: 10        # burst 狀態下的 λ
         burst_on_duration:
           min: 1.0
           max: 2.0

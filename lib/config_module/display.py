@@ -21,7 +21,7 @@ def display_config(config: ParsedConfig) -> None:
     print(f"  Display Interval (sec): {config.simulation.display_interval_sec}")
     print(f"  Packet Type: {config.simulation.packet_type}")
     print(f"  Record Path: {config.simulation.record_csv_path}")
-    print(f"  Target IPs: [{'], ['.join(config.simulation.target_ips)}]")
+    print(f"  Target Subnets: [{'], ['.join(config.simulation.target_subnets)}]")
     
     # 顯示 UE Allocation
     print("\nUE Allocation:")

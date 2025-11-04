@@ -38,7 +38,7 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
         duration_sec=sim["duration_sec"],
         display_interval_sec=sim["display_interval_sec"],
         packet_type=sim["packet_type"],
-        target_ips=sim["target_ips"],
+        target_subnets=sim["target_subnets"],
         ue_simulator_type=sim.get("ue_simulator_type", "packetrusher"),
         interface_id_start=sim.get("interface_id_start", 4)
     )

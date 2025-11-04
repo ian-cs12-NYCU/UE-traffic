@@ -11,6 +11,7 @@ from ..packet_sender.utils import check_interface_binding_permission, format_int
 from ..ue_generator import UEProfile
 from ..display import Display
 from ..recorder import Recorder
+from ..network_utils import expand_subnets_to_ips
 
 class PoissonWaitGenerator:
     def __init__(self, 
@@ -72,7 +73,21 @@ class Simulator:
 
         self.ue_profiles = ue_profiles
         self.duration = cfg.simulation.duration_sec
-        self.target_ips = cfg.simulation.target_ips
+        
+        # 從 CIDR 網段展開成 IP 地址列表
+        print(f"[INFO] Expanding subnets: {cfg.simulation.target_subnets}")
+        self.target_ips = expand_subnets_to_ips(cfg.simulation.target_subnets)
+        
+        if not self.target_ips:
+            raise ValueError("No valid IP addresses generated from target_subnets. Please check your configuration.")
+        
+        print(f"[INFO] Generated {len(self.target_ips)} target IP addresses")
+        if len(self.target_ips) <= 10:
+            print(f"[INFO] Target IPs: {', '.join(self.target_ips)}")
+        else:
+            print(f"[INFO] First 5 IPs: {', '.join(self.target_ips[:5])}")
+            print(f"[INFO] Last 5 IPs: {', '.join(self.target_ips[-5:])}")
+        
         self.packet_type = cfg.simulation.packet_type
         # keep full config for building interface names
         self.cfg = cfg

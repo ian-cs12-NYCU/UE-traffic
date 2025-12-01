@@ -22,6 +22,7 @@ def display_config(config: ParsedConfig) -> None:
     print(f"  Packet Type: {config.simulation.packet_type}")
     print(f"  Record Path: {config.simulation.record_csv_path}")
     print(f"  Target Subnets: [{'], ['.join(config.simulation.target_subnets)}]")
+    print(f"  Target Ports: {config.simulation.target_ports}")
     
     # 顯示 UE Allocation
     print("\nUE Allocation:")

@@ -30,11 +30,15 @@ class TCPSender:
     def send_packet(self, *, target_ip: str, payload_size: int, target_port: Optional[int] = None):
         """
         發送 TCP 封包並返回 5-tuple 信息
+        源端口設置為與目標端口相同
         """
         sock = None
         try:
             # 創建並綁定 TCP socket
             sock = self._create_bound_socket()
+            
+            # 綁定源端口為目標端口（src_port = dst_port）
+            sock.bind(('', target_port))
             
             # 連接到目標
             sock.connect((target_ip, target_port))

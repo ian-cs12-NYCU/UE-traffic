@@ -1,19 +1,28 @@
 simulation:
   record_csv_path: log/packet_records.csv
-  duration_sec: 60 
-  display_interval_sec: 5
+  duration_sec: 180 
+  display_interval_sec: 10
   packet_type: udp # ping, udp, tcp
   # 支援 CIDR 網段表示法，例如 10.201.10.0/24
   # 流量會均勻分布到網段內的所有 IP 地址
   target_subnets:
     - 10.201.10.0/24
 
-  # UE simulator type: 'ueransim' or 'packetrusher'
+  # 目標端口配置，支援以下格式：
+  # - 單個端口: 80
+  # - 多個端口: 80, 443, 8080
+  # - 端口範圍: 8000-8010 (包含 8000 和 8010)
+  # - 混合使用: 80, 443, 8000-8010
+  # 流量會均勻分布到所有指定的端口
+  target_ports: "80, 443, 8000-8100, 9000"
+
+  # UE simulator type: 'ueransim', 'packetrusher', or 'free-ran-ue'
   # This determines the interface naming convention
   # ueransim: uesimtun0, uesimtun1, ...
   # packetrusher: val0000000001, val0000000002, ..., val0000000009, val0000000010, val9999999999
   #               (always val + exactly 10 digits, zero-padded)
-  ue_simulator_type: packetrusher
+  # free-ran-ue: ueTun0, ueTun1, ..., ueTun99
+  ue_simulator_type: free-ran-ue
   
   # Interface ID 起始編號 (0-based index)
   # 例如設定為 4，則第一個 UE 使用 id=4 (val0000000004)，第二個使用 id=5，以此類推
@@ -22,14 +31,14 @@ simulation:
 
 ue:
   allocation:
-    total_count: 5
+    total_count: 50
     distribution:
-      high_traffic: 5
+      high_traffic: 50
       mid_traffic: 0
       low_traffic: 0
   profiles:
     - name: high_traffic
-      packet_arrival_rate: 8
+      packet_arrival_rate: 50
       packet_size: 
         distribution: uniform
         min: 80
@@ -37,7 +46,7 @@ ue:
       burst:
         enable: true
         burst_chance: 0.4              # 機率進入 burst
-        burst_arrival_rate: 20        # burst 狀態下的 λ
+        burst_arrival_rate: 100       # burst 狀態下的 λ
         burst_on_duration:
           min: 0.5
           max: 1.5

@@ -12,6 +12,7 @@ from ..ue_generator import UEProfile
 from ..display import Display
 from ..recorder import Recorder
 from ..network_utils import expand_subnets_to_ips
+from ..port_utils import parse_port_string
 
 class PoissonWaitGenerator:
     def __init__(self, 
@@ -88,6 +89,20 @@ class Simulator:
             print(f"[INFO] First 5 IPs: {', '.join(self.target_ips[:5])}")
             print(f"[INFO] Last 5 IPs: {', '.join(self.target_ips[-5:])}")
         
+        # 解析目標端口配置
+        print(f"[INFO] Parsing target ports: {cfg.simulation.target_ports}")
+        self.target_ports = parse_port_string(cfg.simulation.target_ports)
+        
+        if not self.target_ports:
+            raise ValueError("No valid ports generated from target_ports. Please check your configuration.")
+        
+        print(f"[INFO] Generated {len(self.target_ports)} target ports")
+        if len(self.target_ports) <= 20:
+            print(f"[INFO] Target Ports: {self.target_ports}")
+        else:
+            print(f"[INFO] First 10 ports: {self.target_ports[:10]}")
+            print(f"[INFO] Last 10 ports: {self.target_ports[-10:]}")
+        
         self.packet_type = cfg.simulation.packet_type
         # keep full config for building interface names
         self.cfg = cfg
@@ -126,17 +141,19 @@ class Simulator:
                 break
 
             target_ip = random.choice(self.target_ips)
+            target_port = random.choice(self.target_ports)
+            
             if ue.packet_size.distribution == "uniform":
                 payload_size = random.randint(ue.packet_size.min, ue.packet_size.max)
             else:
                 print(f"[ERROR] Unsupported packet size distribution: {ue.packet_size.distribution}")
                 return
 
-            print(f"[{iface}] Sending {self.packet_type} to {target_ip} with size {payload_size} bytes.")
+            print(f"[{iface}] Sending {self.packet_type} to {target_ip}:{target_port} with size {payload_size} bytes.")
             ret = packet_sender.send_packet(
                 target_ip=target_ip,
                 payload_size=payload_size,
-                target_port=9000  # 可為 None TODO: 應該從config 讀取
+                target_port=target_port
             )
 
             if ret['success'] is True:

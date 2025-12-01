@@ -33,14 +33,19 @@ class UDPSender:
             # 生成隨機 payload
             payload = bytes(random.getrandbits(8) for _ in range(payload_size))
             
-            # 如果 socket 還沒有綁定端口，讓系統自動分配
-            if self.sock.getsockname()[1] == 0:
-                self.sock.bind(('', 0))  # 綁定到隨機可用端口
+            # 綁定源端口為目標端口（src_port = dst_port）
+            try:
+                self.sock.bind(('', target_port))
+            except OSError as e:
+                # 如果端口已被使用，關閉舊的 socket 並創建新的
+                self.sock.close()
+                self._setup_socket()
+                self.sock.bind(('', target_port))
             
             # 發送 UDP 封包
             self.sock.sendto(payload, (target_ip, target_port))
             
-            # 獲取實際的源端口
+            # 獲取實際的源端口（應該等於 target_port）
             _, src_port = self.sock.getsockname()
             
             # 使用初始化時獲取的 interface IP

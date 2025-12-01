@@ -41,10 +41,43 @@ simulation:
     - 8.8.8.8/32          # 單個 IP (8.8.8.8)
 ```
 
-**測試網段展開功能：**
+### 目標端口配置 (Target Ports)
+
+支援靈活的端口配置方式，流量會**均勻分布**到所有指定的端口上。
+
+**配置格式：**
+
+```yaml
+simulation:
+  target_ports: "80, 443, 8000-8010, 9000"
+```
+
+**支援的格式：**
+- 單個端口：`"80"`
+- 多個端口：`"80, 443, 8080"`
+- 端口範圍：`"8000-8010"` (包含起始和結束端口)
+- 混合使用：`"80, 443, 8000-8010, 9000"`
+
+**配置範例：**
+
+```yaml
+# 範例 1: 常見 Web 端口
+target_ports: "80, 443, 8080, 8443"
+
+# 範例 2: 測試端口範圍
+target_ports: "9000-9010"
+
+# 範例 3: 混合配置
+target_ports: "53, 80, 443, 3000-3005, 8080, 9000-9002"
+```
+
+**測試配置功能：**
 ```bash
 # 測試網段展開和流量分布
 python3 -m lib.network_utils
+
+# 測試端口解析和流量分布
+python3 -m lib.port_utils
 
 # 完整的配置測試（包含流量分布統計）
 python3 test_subnet_expansion.py
@@ -70,7 +103,7 @@ sudo python3 main.py
 或是在 venv 中使用：
 ```bash
 $ python3 -m venv --prompt UE-traffic .venv
-$ .venv/bin/activate
+$ source .venv/bin/activate
 (UE-traffic) $ pip3 install -r requirements.txt 
 (UE-traffic) $ sudo /home/vagrant/UE-traffic/.venv/bin/python3 main.py
 ```

@@ -59,7 +59,7 @@ def format_interface_name(simulator_type: str, id_val: int) -> str:
     根據 UE simulator 類型格式化介面名稱
     
     Args:
-        simulator_type: 'ueransim' 或 'packetrusher'
+        simulator_type: 'ueransim', 'packetrusher', or 'free-ran-ue'
         id_val: UE 的數字 id
         
     Returns:
@@ -67,6 +67,7 @@ def format_interface_name(simulator_type: str, id_val: int) -> str:
         - ueransim: uesimtun0, uesimtun1, uesimtun2, ...
         - packetrusher: val0000000001, val0000000009, val0000000010, val9999999999
                        (always 'val' prefix + exactly 10 digits with zero-padding)
+        - free-ran-ue: ueTun0, ueTun1, ueTun2, ..., ueTun99
     
     Raises:
         ValueError: 當 packetrusher id 超過 10 位數時
@@ -78,6 +79,9 @@ def format_interface_name(simulator_type: str, id_val: int) -> str:
         if id_val > 9999999999:  # 超過 10 位數
             raise ValueError(f"PacketRusher interface id {id_val} exceeds maximum (9999999999)")
         return f"val{id_val:010d}"  # :010d = zero-pad to 10 digits
+    elif simulator_type == "free-ran-ue":
+        # free-ran-ue 使用 ueTun + 數字（直接拼接，無固定長度）
+        return f"ueTun{id_val}"
     else:
         # 預設使用 ueransim 格式
         return f"uesimtun{id_val}"
@@ -164,6 +168,23 @@ if __name__ == "__main__":
     
     for id_val, expected in test_cases_ue:
         result = format_interface_name("ueransim", id_val)
+        status = "✓" if result == expected else "✗"
+        print(f"  {status} id={id_val:2d} -> {result:12s} (expected: {expected})")
+    
+    # 測試 FREE-RAN-UE 格式
+    print("\n【FREE-RAN-UE 格式】ueTun + 數字 (無固定長度)")
+    print("-" * 60)
+    test_cases_free_ran = [
+        (0, "ueTun0"),
+        (1, "ueTun1"),
+        (4, "ueTun4"),
+        (10, "ueTun10"),
+        (50, "ueTun50"),
+        (99, "ueTun99"),
+    ]
+    
+    for id_val, expected in test_cases_free_ran:
+        result = format_interface_name("free-ran-ue", id_val)
         status = "✓" if result == expected else "✗"
         print(f"  {status} id={id_val:2d} -> {result:12s} (expected: {expected})")
     

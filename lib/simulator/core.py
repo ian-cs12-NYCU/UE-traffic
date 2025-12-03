@@ -117,7 +117,7 @@ class Simulator:
  
     def simulate_ue(self, ue: UEProfile):
         """
-        模擬單一 UE 的封包發送行為（使用批次發送提高精度）
+        模擬單一 UE 的封包發送行為（使用批次發送 + Carpet Bombing Fan-Out 策略）
         
         批次發送原理：
         1. 使用 Poisson process 生成封包間隔時間（維持理論流量分佈）
@@ -125,15 +125,18 @@ class Simulator:
         3. 快速連續發送這一批封包
         4. Sleep 累積的總時間減去實際發送耗時
         
+        Carpet Bombing Fan-Out 策略（全時段）：
+        1. 所有封包都使用 round-robin 方式輪流選擇目標 IP
+        2. 確保最大化目標 IP 覆蓋率（Fan-Out ≈ 1.0）
+        3. 每輪循環完整個 IP 列表後，重新打亂順序（避免過於規律）
+        4. 實現持續性的「地毯式轟炸」特徵
+        
         優點：
         - time.sleep() 使用較長的時間（如 10ms），作業系統能更精確控制
         - 實際達成的 bitrate 更接近理論值
         - 不影響 Poisson 分佈特性（間隔時間仍由 Poisson process 產生）
-        
-        範例：
-        - packet_arrival_rate = 2000 pps, batch_size = 20
-        - 每批次間隔 = 20/2000 = 0.01 秒 (10ms)
-        - 10ms 比 0.5ms 更容易精確控制
+        - 無論 burst 與否，都維持高 Fan-Out（Carpet Bombing 核心特徵）
+        - 定期重新打亂避免被輕易檢測出規律模式
         """
         # 根據 simulator type 建立介面名稱
         iface = format_interface_name(self.cfg.simulation.ue_simulator_type, ue.id)
@@ -162,6 +165,12 @@ class Simulator:
         batch_size = self.cfg.simulation.batch_size
         packets_to_send = []  # 待發送封包的佇列
         
+        # === Carpet Bombing Fan-Out 策略變數 ===
+        # Shuffled IP pool for carpet bombing (定期重新打亂以避免過於規律)
+        shuffled_ips = self.target_ips.copy()
+        random.shuffle(shuffled_ips)
+        ip_index = 0  # Round-robin index for target IPs
+        
         try:
             while not self.stop_flag.is_set():
                 # 使用 Poisson process 產生下一個封包的等待時間
@@ -186,7 +195,18 @@ class Simulator:
                         if time.time() > self.end_time or self.stop_flag.is_set():
                             break
                         
-                        target_ip = random.choice(self.target_ips)
+                        # === Carpet Bombing Fan-Out 策略 ===
+                        # 全時段使用 round-robin 確保最大化 IP 覆蓋率
+                        # Carpet Bombing 的核心特徵：持續性的廣撒攻擊
+                        # 無論 burst 與否，都維持高 Fan-Out（地毯式轟炸）
+                        target_ip = shuffled_ips[ip_index]
+                        ip_index = (ip_index + 1) % len(shuffled_ips)
+                        
+                        # 定期重新打亂 IP 列表（每輪循環完一次後）
+                        # 避免過於規律的模式被輕易檢測
+                        if ip_index == 0:
+                            random.shuffle(shuffled_ips)
+                        
                         target_port = random.choice(self.target_ports)
                         
                         if ue.packet_size.distribution == "uniform":

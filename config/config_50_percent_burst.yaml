@@ -42,9 +42,9 @@ simulation:
 
 ue:
   allocation:
-    total_count: 50
+    total_count: 20
     distribution:
-      high_traffic: 50
+      high_traffic: 20
       mid_traffic: 0
       low_traffic: 0
   profiles:

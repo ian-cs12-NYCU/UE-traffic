@@ -21,6 +21,20 @@ class TCPSender:
             self.interface_ip = "unknown"
         else:
             logger.debug(f"Interface '{iface}' IP: {self.interface_ip}")
+        
+        # 在初始化時創建並綁定 raw socket，重用以提高效能
+        self._setup_socket()
+    
+    def _setup_socket(self):
+        """創建並綁定 raw socket（僅在初始化時調用一次）"""
+        try:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
+            self.sock.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 0)
+            bind_socket_to_interface(self.sock, self.iface)
+            logger.debug(f"TCP raw socket created and bound to {self.iface}")
+        except Exception as e:
+            logger.error(f"Failed to create TCP raw socket: {e}")
+            raise
 
     def _checksum(self, data: bytes) -> int:
         """計算 TCP/IP checksum"""
@@ -88,17 +102,9 @@ class TCPSender:
     def send_packet(self, *, target_ip: str, payload_size: int, target_port: Optional[int] = None):
         """
         發送 TCP SYN 封包（只發送 SYN，不完成三次握手）
-        使用 raw socket 直接發送
+        使用預先創建的 raw socket 直接發送
         """
-        sock = None
         try:
-            # 創建 raw socket（需要 root 權限）
-            sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_TCP)
-            sock.setsockopt(socket.IPPROTO_IP, socket.IP_HDRINCL, 0)  # Kernel 會自動添加 IP header
-            
-            # 綁定到指定介面
-            bind_socket_to_interface(sock, self.iface)
-            
             # 使用目標端口作為源端口
             src_port = target_port
             src_ip = self.interface_ip
@@ -106,10 +112,10 @@ class TCPSender:
             # 構建 TCP SYN 封包
             tcp_packet = self._build_tcp_syn_packet(src_ip, target_ip, src_port, target_port, payload_size)
             
-            # 發送封包
-            sock.sendto(tcp_packet, (target_ip, 0))
+            # 發送封包（使用預先創建的 socket）
+            self.sock.sendto(tcp_packet, (target_ip, 0))
             
-            self.logger.debug(f"[{self.iface}] Sent TCP SYN with {payload_size} bytes payload from {src_ip}:{src_port} to {target_ip}:{target_port}")
+            logger.debug(f"[{self.iface}] Sent TCP SYN with {payload_size} bytes payload from {src_ip}:{src_port} to {target_ip}:{target_port}")
             
             return {
                 'src_ip': src_ip,
@@ -121,7 +127,7 @@ class TCPSender:
             }
             
         except Exception as e:
-            self.logger.error(f"[{self.iface}] TCP SYN send failed: {e}")
+            logger.error(f"[{self.iface}] TCP SYN send failed: {e}")
             return {
                 'src_ip': self.interface_ip,
                 'src_port': target_port,
@@ -131,6 +137,11 @@ class TCPSender:
                 'success': False,
                 'error': str(e)
             }
-        finally:
-            if sock:
-                sock.close()
+    
+    def __del__(self):
+        """清理：關閉 socket"""
+        try:
+            if hasattr(self, 'sock'):
+                self.sock.close()
+        except:
+            pass

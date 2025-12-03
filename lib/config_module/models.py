@@ -48,6 +48,12 @@ class SimulationConfig:
     ue_simulator_type: Literal["ueransim", "packetrusher", "free-ran-ue"] = "packetrusher"
     # Interface ID 起始編號（第一個 UE 使用的 interface id）
     interface_id_start: int = 4
+    # 批次發送大小，控制一次發送多少封包後才 sleep
+    batch_size: int = 20
+    # 日誌等級：DEBUG, INFO, WARNING, ERROR
+    log_level: str = "INFO"
+    # 是否記錄每個封包的詳細資訊到 CSV（關閉可節省記憶體和 CPU）
+    record_packet_details: bool = False
 
 @dataclass
 class ParsedConfig:

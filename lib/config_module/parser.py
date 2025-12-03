@@ -13,7 +13,12 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
     解析配置文件
     
     Args:
-        path: 配置文件路徑
+        path: 配置文件路徑（相對或絕對路徑）
+              預設值: 'config/config.yaml'
+              範例:
+                - 'config/config.yaml'              # 相對路徑
+                - '/etc/ue-traffic/config.yaml'     # 絕對路徑
+                - './my-test-config.yaml'           # 當前目錄
         
     Returns:
         ParsedConfig: 解析後的配置對象
@@ -43,7 +48,8 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
         batch_size=sim.get("batch_size", 20),  # 默認批次大小 20
         ue_simulator_type=sim.get("ue_simulator_type", "packetrusher"),
         interface_id_start=sim.get("interface_id_start", 4),
-        log_level=sim.get("log_level", "INFO")  # 默認 INFO
+        log_level=sim.get("log_level", "INFO"),  # 默認 INFO
+        record_packet_details=sim.get("record_packet_details", True)  # 默認記錄詳細資訊
     )
     # 解析 UE allocation 配置
     ue_config = raw["ue"]

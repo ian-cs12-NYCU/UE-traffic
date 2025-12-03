@@ -112,7 +112,7 @@ class Simulator:
         self.cfg = cfg
         self.start_time = time.time()
         self.end_time = self.start_time + self.duration
-        self.recorder = Recorder(self.lock, self.ue_profiles, cfg.simulation.record_csv_path)
+        self.recorder = Recorder(self.lock, self.ue_profiles, cfg.simulation.record_csv_path, cfg.simulation.record_packet_details)
         self.display = Display(self.recorder, self.lock, cfg.simulation.display_interval_sec)
  
     def simulate_ue(self, ue: UEProfile):
@@ -162,69 +162,74 @@ class Simulator:
         batch_size = self.cfg.simulation.batch_size
         packets_to_send = []  # 待發送封包的佇列
         
-        while not self.stop_flag.is_set():
-            # 使用 Poisson process 產生下一個封包的等待時間
-            wait = waiting_timer.next_wait()
-            
-            # 累積封包到批次中（不實際 sleep）
-            if time.time() + wait > self.end_time:
-                # 如果下一個封包會超過模擬時間，發送剩餘的封包後結束
-                break
-            
-            packets_to_send.append(wait)
-            
-            # 當累積到足夠的封包數量時，進行批次發送
-            if len(packets_to_send) >= batch_size:
-                # 計算批次間隔時間（理論上這批封包應該跨越的總時間）
-                batch_total_wait = sum(packets_to_send)
+        try:
+            while not self.stop_flag.is_set():
+                # 使用 Poisson process 產生下一個封包的等待時間
+                wait = waiting_timer.next_wait()
                 
-                batch_start = time.time()
+                # 累積封包到批次中（不實際 sleep）
+                if time.time() + wait > self.end_time:
+                    # 如果下一個封包會超過模擬時間，發送剩餘的封包後結束
+                    break
                 
-                # 批次發送所有封包
-                for _ in range(len(packets_to_send)):
-                    if time.time() > self.end_time or self.stop_flag.is_set():
-                        break
+                packets_to_send.append(wait)
+                
+                # 當累積到足夠的封包數量時，進行批次發送
+                if len(packets_to_send) >= batch_size:
+                    # 計算批次間隔時間（理論上這批封包應該跨越的總時間）
+                    batch_total_wait = sum(packets_to_send)
                     
-                    target_ip = random.choice(self.target_ips)
-                    target_port = random.choice(self.target_ports)
+                    batch_start = time.time()
                     
-                    if ue.packet_size.distribution == "uniform":
-                        payload_size = random.randint(ue.packet_size.min, ue.packet_size.max)
-                    else:
-                        logger.error(f"Unsupported packet size distribution: {ue.packet_size.distribution}")
-                        return
+                    # 批次發送所有封包
+                    for _ in range(len(packets_to_send)):
+                        if time.time() > self.end_time or self.stop_flag.is_set():
+                            break
+                        
+                        target_ip = random.choice(self.target_ips)
+                        target_port = random.choice(self.target_ports)
+                        
+                        if ue.packet_size.distribution == "uniform":
+                            payload_size = random.randint(ue.packet_size.min, ue.packet_size.max)
+                        else:
+                            logger.error(f"Unsupported packet size distribution: {ue.packet_size.distribution}")
+                            return
 
-                    ret = packet_sender.send_packet(
-                        target_ip=target_ip,
-                        payload_size=payload_size,
-                        target_port=target_port
-                    )
-
-                    if ret['success'] is True:
-                        # 只在成功時才記錄封包
-                        self.recorder.record_packet(
-                            ue.id,
-                            iface,
-                            payload_size,
-                            src_ip=ret['src_ip'],
-                            dst_ip=ret['dst_ip'],
-                            src_port=ret['src_port'],
-                            dst_port=ret['dst_port']
+                        ret = packet_sender.send_packet(
+                            target_ip=target_ip,
+                            payload_size=payload_size,
+                            target_port=target_port
                         )
-                    else:
-                        # 發送失敗時停止該 UE 的模擬
-                        break
-                
-                # 計算實際發送耗時
-                elapsed = time.time() - batch_start
-                
-                # 扣除發送耗時後，sleep 剩餘時間以維持正確的發送速率
-                sleep_time = batch_total_wait - elapsed
-                if sleep_time > 0:
-                    time.sleep(sleep_time)
-                
-                # 清空佇列，準備下一批
-                packets_to_send = []
+
+                        if ret['success'] is True:
+                            # 只在成功時才記錄封包
+                            self.recorder.record_packet(
+                                ue.id,
+                                iface,
+                                payload_size,
+                                src_ip=ret['src_ip'],
+                                dst_ip=ret['dst_ip'],
+                                src_port=ret['src_port'],
+                                dst_port=ret['dst_port']
+                            )
+                        else:
+                            # 發送失敗時停止該 UE 的模擬
+                            break
+                    
+                    # 計算實際發送耗時
+                    elapsed = time.time() - batch_start
+                    
+                    # 扣除發送耗時後，sleep 剩餘時間以維持正確的發送速率
+                    sleep_time = batch_total_wait - elapsed
+                    if sleep_time > 0:
+                        time.sleep(sleep_time)
+                    
+                    # 清空佇列，準備下一批
+                    packets_to_send = []
+        finally:
+            # 確保執行緒結束前 flush 記錄 buffer
+            self.recorder._flush_thread_buffer()
+            logger.debug(f"UE {ue.id} thread finished, buffer flushed.")
 
     def validate_ue_profiles(self):
         # 首先檢查是否有足夠的權限綁定到網路介面
@@ -285,6 +290,11 @@ class Simulator:
             time.sleep(1)
         logger.info("Simulation completed.")
 
+        # 確保所有執行緒的記錄都被 flush
+        # 由於執行緒已經結束，我們需要手動處理可能殘留的 buffer
+        # 實際上因為執行緒已結束，thread-local buffer 已經失效
+        # 但在 save_csv 前呼叫 flush 確保資料完整性
+        
         # save results to file
         self.recorder.save_csv()
 

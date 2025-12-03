@@ -4,13 +4,39 @@ import os
 import time
 import signal
 import sys
+import argparse
 from lib.config_module import parse_config
 from lib.ue_generator import generate_ue_profiles
 from lib.simulator import Simulator
 from lib.logger import setup_logger, set_log_level_by_name
 
+# === Parse command line arguments ===
+parser = argparse.ArgumentParser(
+    description='UE Traffic Simulator - Simulate network traffic from multiple UEs',
+    formatter_class=argparse.RawDescriptionHelpFormatter,
+    epilog='''\nExamples:
+  python3 main.py                           # Use default config (config/config.yaml)
+  python3 main.py -c myconfig.yaml          # Use custom config file
+  python3 main.py --config /path/to/cfg.yaml  # Use config with absolute path
+    '''
+)
+parser.add_argument(
+    '-c', '--config',
+    type=str,
+    default='config/config.yaml',
+    help='Path to configuration file (default: config/config.yaml)'
+)
+args = parser.parse_args()
+
 # === Load parsed config ===
-cfg = parse_config()
+try:
+    cfg = parse_config(args.config)
+except FileNotFoundError as e:
+    print(f"Error: {e}")
+    sys.exit(1)
+except Exception as e:
+    print(f"Error parsing config: {e}")
+    sys.exit(1)
 
 # === Setup logger ===
 log_level = getattr(cfg.simulation, 'log_level', 'INFO')

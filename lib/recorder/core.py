@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 from datetime import datetime
 import csv
 import logging
+from collections import defaultdict
 
 from ..ue_generator import UEProfile
 
@@ -10,10 +11,11 @@ logger = logging.getLogger("UE-traffic")
 
 
 class Recorder:
-    def __init__(self, lock: threading.Lock, ueProfiles: List[UEProfile], csv_path: str = "log/packet_records.csv"):
+    def __init__(self, lock: threading.Lock, ueProfiles: List[UEProfile], csv_path: str = "log/packet_records.csv", record_details: bool = True):
         self.lock = lock
         self.csv_path = csv_path
         self.record_start_time = datetime.now().timestamp()
+        self.record_details = record_details  # 控制是否記錄每個封包的詳細資訊
 
         # 紀錄每一個送出的封包資訊，用於畫圖 / 儲存 CSV / 時間分析
         # 每筆紀錄是一個字典，格式如下：
@@ -55,6 +57,10 @@ class Recorder:
 
         # 每個 UE 的總位元組數（即時追蹤，避免重複計算）
         self.ue_total_bytes: Dict[int, int] = {}
+        
+        # Thread-local buffer：每個執行緒維護自己的 buffer，減少鎖競爭
+        self.thread_local = threading.local()
+        self.BUFFER_SIZE = 100  # 每個執行緒累積 100 筆記錄後才寫入
 
         for ue in ueProfiles:
             self.ue_packet_cnt[ue.id] = 0
@@ -63,6 +69,23 @@ class Recorder:
             self.ue_total_bytes[ue.id] = 0
         
         logger.info(f"Recorder initialized with {len(self.ue_packet_cnt)} UEs.")
+
+    def _get_thread_buffer(self):
+        """獲取當前執行緒的 buffer"""
+        if not hasattr(self.thread_local, 'buffer'):
+            self.thread_local.buffer = []
+        return self.thread_local.buffer
+    
+    def _flush_thread_buffer(self):
+        """將當前執行緒的 buffer 寫入主記錄"""
+        buffer = self._get_thread_buffer()
+        if not buffer:
+            return
+        
+        with self.lock:
+            self.packet_records.extend(buffer)
+        
+        buffer.clear()
 
     def record_packet(
         self,
@@ -75,19 +98,8 @@ class Recorder:
         dst_port: Optional[int] = None,
         latency_ms: Optional[float] = None
     ):
+        # 先更新統計數據（使用鎖保護）
         with self.lock:
-            self.packet_records.append({
-                "timestamp": datetime.now().timestamp() - self.record_start_time,
-                "ue_id": ue_id,
-                "iface": iface,
-                "size_bytes": size_bytes,
-                "latency_ms": latency_ms,
-                "src_ip": src_ip,
-                "dst_ip": dst_ip,
-                "src_port": src_port,
-                "dst_port": dst_port
-            })
-
             # ue packet cnt (cache) record
             self.ue_packet_cnt[ue_id] += 1
 
@@ -105,8 +117,39 @@ class Recorder:
                 if ue_id not in self.ue_latency_ms:
                     self.ue_latency_ms[ue_id] = []
                 self.ue_latency_ms[ue_id].append(latency_ms)
+        
+        # 只在啟用詳細記錄時才保存封包資訊（節省記憶體）
+        if not self.record_details:
+            return
+        
+        # 將封包記錄加入 thread-local buffer（無需鎖）
+        buffer = self._get_thread_buffer()
+        buffer.append({
+            "timestamp": datetime.now().timestamp() - self.record_start_time,
+            "ue_id": ue_id,
+            "iface": iface,
+            "size_bytes": size_bytes,
+            "latency_ms": latency_ms,
+            "src_ip": src_ip,
+            "dst_ip": dst_ip,
+            "src_port": src_port,
+            "dst_port": dst_port
+        })
+        
+        # 當 buffer 達到一定大小時，批次寫入
+        if len(buffer) >= self.BUFFER_SIZE:
+            self._flush_thread_buffer()
     
     def save_csv(self):
+        # 如果沒有啟用詳細記錄，則不保存 CSV
+        if not self.record_details:
+            logger.info("Packet detail recording is disabled. Skipping CSV save.")
+            return
+        
+        # 在保存前先 flush 所有執行緒的 buffer
+        # 注意：此時模擬應該已經結束，所以不會有新的記錄加入
+        self._flush_thread_buffer()
+        
         if not self.packet_records:
             logger.error("No packet records to save.")
             return

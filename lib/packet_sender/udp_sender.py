@@ -1,7 +1,10 @@
 import socket
 import os
+import logging
 from typing import Optional
 from .utils import get_interface_ip, bind_socket_to_interface
+
+logger = logging.getLogger("UE-traffic")
 
 
 class UDPSender:
@@ -13,10 +16,10 @@ class UDPSender:
         # 在初始化時就獲取該 interface 的 IP 地址
         self.interface_ip = get_interface_ip(iface)
         if self.interface_ip is None:
-            print(f"[WARN] Could not determine IP address for interface '{iface}'")
+            logger.warning(f"Could not determine IP address for interface '{iface}'")
             self.interface_ip = "unknown"
         else:
-            print(f"[INFO] Interface '{iface}' IP: {self.interface_ip}")
+            logger.debug(f"Interface '{iface}' IP: {self.interface_ip}")
 
         # 初始化時創建並綁定 UDP socket
         self._setup_socket()
@@ -50,8 +53,6 @@ class UDPSender:
             # 使用初始化時獲取的 interface IP
             src_ip = self.interface_ip
             
-            print(f"[{self.iface}] Sent {payload_size} bytes from {src_ip}:{src_port} to {target_ip}:{target_port}")
-            
             # 返回 5-tuple 信息：(src_ip, src_port, dst_ip, dst_port, protocol)
             return {
                 'src_ip': src_ip,
@@ -63,7 +64,6 @@ class UDPSender:
             }
             
         except Exception as e:
-            print(f"[{self.iface}] UDP send failed: {e}")
             return {
                 'src_ip': self.interface_ip,  # 即使失敗也使用已知的 interface IP
                 'src_port': None,

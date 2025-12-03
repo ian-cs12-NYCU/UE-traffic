@@ -1,8 +1,15 @@
 simulation:
   record_csv_path: log/packet_records.csv
   duration_sec: 180 
-  display_interval_sec: 10
+  display_interval_sec: 15
   packet_type: udp # ping, udp, tcp
+  
+  # 日誌等級設定 (可選值: DEBUG, INFO, WARNING, ERROR, CRITICAL)
+  # DEBUG: 顯示所有詳細信息（包括每個封包發送、socket 綁定等）
+  # INFO: 顯示一般信息（啟動信息、配置加載等）
+  # WARNING: 僅顯示警告和錯誤
+  # ERROR: 僅顯示錯誤
+  log_level: WARNING
   
   # 批次發送大小 (Batch Size)
   # 為了解決 time.sleep() 精度問題，改用批次發送模式
@@ -51,9 +58,9 @@ simulation:
 
 ue:
   allocation:
-    total_count: 50
+    total_count: 100
     distribution:
-      high_traffic: 50
+      high_traffic: 100
       mid_traffic: 0
       low_traffic: 0
   profiles:

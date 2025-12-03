@@ -3,7 +3,10 @@ import time
 import threading
 import random
 import os
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger("UE-traffic")
 
 from ..config_module import ParsedConfig, Burst
 from ..packet_sender import get_packet_sender
@@ -76,32 +79,32 @@ class Simulator:
         self.duration = cfg.simulation.duration_sec
         
         # 從 CIDR 網段展開成 IP 地址列表
-        print(f"[INFO] Expanding subnets: {cfg.simulation.target_subnets}")
+        logger.info(f"Expanding subnets: {cfg.simulation.target_subnets}")
         self.target_ips = expand_subnets_to_ips(cfg.simulation.target_subnets)
         
         if not self.target_ips:
             raise ValueError("No valid IP addresses generated from target_subnets. Please check your configuration.")
         
-        print(f"[INFO] Generated {len(self.target_ips)} target IP addresses")
+        logger.info(f"Generated {len(self.target_ips)} target IP addresses")
         if len(self.target_ips) <= 10:
-            print(f"[INFO] Target IPs: {', '.join(self.target_ips)}")
+            logger.info(f"Target IPs: {', '.join(self.target_ips)}")
         else:
-            print(f"[INFO] First 5 IPs: {', '.join(self.target_ips[:5])}")
-            print(f"[INFO] Last 5 IPs: {', '.join(self.target_ips[-5:])}")
+            logger.debug(f"First 5 IPs: {', '.join(self.target_ips[:5])}")
+            logger.debug(f"Last 5 IPs: {', '.join(self.target_ips[-5:])}")
         
         # 解析目標端口配置
-        print(f"[INFO] Parsing target ports: {cfg.simulation.target_ports}")
+        logger.info(f"Parsing target ports: {cfg.simulation.target_ports}")
         self.target_ports = parse_port_string(cfg.simulation.target_ports)
         
         if not self.target_ports:
             raise ValueError("No valid ports generated from target_ports. Please check your configuration.")
         
-        print(f"[INFO] Generated {len(self.target_ports)} target ports")
+        logger.info(f"Generated {len(self.target_ports)} target ports")
         if len(self.target_ports) <= 20:
-            print(f"[INFO] Target Ports: {self.target_ports}")
+            logger.debug(f"Target Ports: {self.target_ports}")
         else:
-            print(f"[INFO] First 10 ports: {self.target_ports[:10]}")
-            print(f"[INFO] Last 10 ports: {self.target_ports[-10:]}")
+            logger.debug(f"First 10 ports: {self.target_ports[:10]}")
+            logger.debug(f"Last 10 ports: {self.target_ports[-10:]}")
         
         self.packet_type = cfg.simulation.packet_type
         # keep full config for building interface names
@@ -134,19 +137,19 @@ class Simulator:
         # 根據 simulator type 建立介面名稱
         iface = format_interface_name(self.cfg.simulation.ue_simulator_type, ue.id)
         if ue.packet_arrival_rate <= 0:
-            print(f'[INFO] UE {ue.id} has a packet arrival rate of 0. Skipping simulation.')
+            logger.info(f'UE {ue.id} has a packet arrival rate of 0. Skipping simulation.')
             return
 
         # Get the packet sender based on the packet type and interface, ex: "pingSender", "tcpSender", "udpSender"
         try:
             packet_sender = get_packet_sender(self.packet_type, iface)
         except (PermissionError, OSError) as e:
-            print(f'[ERROR] Failed to initialize packet sender for UE {ue.id}: {e}')
-            print(f'[ERROR] UE {ue.id} simulation stopped.')
+            logger.error(f'Failed to initialize packet sender for UE {ue.id}: {e}')
+            logger.error(f'UE {ue.id} simulation stopped.')
             return
         except Exception as e:
-            print(f'[ERROR] Unexpected error initializing packet sender for UE {ue.id}: {e}')
-            print(f'[ERROR] UE {ue.id} simulation stopped.')
+            logger.error(f'Unexpected error initializing packet sender for UE {ue.id}: {e}')
+            logger.error(f'UE {ue.id} simulation stopped.')
             return
         
         waiting_timer = PoissonWaitGenerator(
@@ -187,10 +190,9 @@ class Simulator:
                     if ue.packet_size.distribution == "uniform":
                         payload_size = random.randint(ue.packet_size.min, ue.packet_size.max)
                     else:
-                        print(f"[ERROR] Unsupported packet size distribution: {ue.packet_size.distribution}")
+                        logger.error(f"Unsupported packet size distribution: {ue.packet_size.distribution}")
                         return
 
-                    print(f"[{iface}] Sending {self.packet_type} to {target_ip}:{target_port} with size {payload_size} bytes.")
                     ret = packet_sender.send_packet(
                         target_ip=target_ip,
                         payload_size=payload_size,
@@ -198,7 +200,6 @@ class Simulator:
                     )
 
                     if ret['success'] is True:
-                        print(f"[{iface}] {self.packet_type} sent successfully: {ret}")
                         # 只在成功時才記錄封包
                         self.recorder.record_packet(
                             ue.id,
@@ -210,7 +211,7 @@ class Simulator:
                             dst_port=ret['dst_port']
                         )
                     else:
-                        print(f"[{iface}] {self.packet_type} failed: {ret}")
+                        # 發送失敗時停止該 UE 的模擬
                         break
                 
                 # 計算實際發送耗時
@@ -227,8 +228,8 @@ class Simulator:
     def validate_ue_profiles(self):
         # 首先檢查是否有足夠的權限綁定到網路介面
         if not check_interface_binding_permission():
-            print(f"[ERROR] ❌ Insufficient privileges to bind to network interfaces.")
-            print(f"[ERROR] ❌ ➡ Please run this program with sudo privileges: sudo python3 ")
+            logger.error("❌ Insufficient privileges to bind to network interfaces.")
+            logger.error("❌ ➡ Please run this program with sudo privileges: sudo python3")
             return False
         
         # 根據 simulator type 建立並驗證介面名稱
@@ -239,7 +240,7 @@ class Simulator:
         for ue in self.ue_profiles:
             iface = format_interface_name(self.cfg.simulation.ue_simulator_type, ue.id)
             if not os.path.exists(f"/sys/class/net/{iface}"):
-                print(f"[WARN] ⚠ Interface '{iface}' does not exist. UE {ue.id} will be skipped.")
+                logger.warning(f"⚠ Interface '{iface}' does not exist. UE {ue.id} will be skipped.")
                 skipped_ues.append(ue)
             else:
                 valid_ues.append(ue)
@@ -248,11 +249,11 @@ class Simulator:
         self.ue_profiles = valid_ues
         
         if len(self.ue_profiles) == 0:
-            print(f"[ERROR] ❌ No valid interfaces found. Cannot proceed with simulation.")
+            logger.error("❌ No valid interfaces found. Cannot proceed with simulation.")
             return False
         
-        print(f"[INFO] ✓ Found {len(valid_ues)} valid interface(s), {len(skipped_ues)} skipped.")
-        print("[INFO] All permissions are sufficient. Proceeding with simulation.")
+        logger.info(f"✓ Found {len(valid_ues)} valid interface(s), {len(skipped_ues)} skipped.")
+        logger.info("All permissions are sufficient. Proceeding with simulation.")
         return True
 
     # Monitoring the packet send by each UE
@@ -281,10 +282,13 @@ class Simulator:
             t.join()
         while time.time() < self.end_time:
             time.sleep(1)
-        print("[INFO] Simulation completed.")
+        logger.info("Simulation completed.")
 
         # save results to file
         self.recorder.save_csv()
+
+        # print final statistics
+        self.display.print_final_statistics()
 
         # plot the scatter plot
         self.display.plot_scatter_and_volume_bar()

@@ -3,6 +3,9 @@
 """
 
 from typing import List
+import logging
+
+logger = logging.getLogger("UE-traffic")
 
 
 def parse_port_string(port_string: str) -> List[int]:
@@ -50,18 +53,18 @@ def parse_port_string(port_string: str) -> List[int]:
                 
                 # 驗證端口範圍
                 if not (1 <= start_port <= 65535 and 1 <= end_port <= 65535):
-                    print(f"[WARN] Invalid port range '{part}': ports must be between 1-65535")
+                    logger.warning(f"Invalid port range '{part}': ports must be between 1-65535")
                     continue
                     
                 if start_port > end_port:
-                    print(f"[WARN] Invalid port range '{part}': start port > end port")
+                    logger.warning(f"Invalid port range '{part}': start port > end port")
                     continue
                 
                 # 展開範圍
                 ports.extend(range(start_port, end_port + 1))
                 
             except ValueError as e:
-                print(f"[WARN] Invalid port range format '{part}': {e}")
+                logger.warning(f"Invalid port range format '{part}': {e}")
                 continue
         else:
             # 單個端口
@@ -70,13 +73,13 @@ def parse_port_string(port_string: str) -> List[int]:
                 
                 # 驗證端口號
                 if not (1 <= port <= 65535):
-                    print(f"[WARN] Invalid port '{port}': must be between 1-65535")
+                    logger.warning(f"Invalid port '{port}': must be between 1-65535")
                     continue
                     
                 ports.append(port)
                 
             except ValueError as e:
-                print(f"[WARN] Invalid port format '{part}': {e}")
+                logger.warning(f"Invalid port format '{part}': {e}")
                 continue
     
     # 移除重複並排序

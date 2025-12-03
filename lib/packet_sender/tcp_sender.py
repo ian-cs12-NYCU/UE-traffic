@@ -1,8 +1,11 @@
 import socket
 import os
 import struct
+import logging
 from typing import Optional
 from .utils import get_interface_ip, bind_socket_to_interface
+
+logger = logging.getLogger("UE-traffic")
 
 
 class TCPSender:
@@ -14,10 +17,10 @@ class TCPSender:
         # 在初始化時就獲取該 interface 的 IP 地址
         self.interface_ip = get_interface_ip(iface)
         if self.interface_ip is None:
-            print(f"[WARN] Could not determine IP address for interface '{iface}'")
+            logger.warning(f"Could not determine IP address for interface '{iface}'")
             self.interface_ip = "unknown"
         else:
-            print(f"[INFO] Interface '{iface}' IP: {self.interface_ip}")
+            logger.debug(f"Interface '{iface}' IP: {self.interface_ip}")
 
     def _checksum(self, data: bytes) -> int:
         """計算 TCP/IP checksum"""

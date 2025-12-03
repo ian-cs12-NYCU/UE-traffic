@@ -2,7 +2,10 @@ from dataclasses import dataclass
 from typing import Literal, List, Dict
 from enum import Enum
 import random
+import logging
 from ..config_module import ProfileConfig, Burst, ParsedConfig  # 更新導入路徑
+
+logger = logging.getLogger("UE-traffic")
 
 class TrafficClass(Enum):
     HIGH = "high"
@@ -81,14 +84,15 @@ if __name__ == "__main__":
     # Example usage with new config structure
     config = parse_config("config/config.yaml")
     
-    print("Configuration loaded:")
-    print(f"Total UEs: {config.ue_allocation.total_count}")
-    print("Distribution:")
+    logger.info("Configuration loaded:")
+    logger.info(f"Total UEs: {config.ue_allocation.total_count}")
+    logger.info("Distribution:")
     for name, count in config.ue_allocation.distribution.items():
-        print(f"  {name}: {count}")
+        logger.info(f"  {name}: {count}")
     
     ue_profiles = generate_ue_profiles(config)
     
-    print(f"\nGenerated {len(ue_profiles)} UE profiles:")
+    logger.info(f"\nGenerated {len(ue_profiles)} UE profiles:")
     for profile in ue_profiles:
-        print(f"UE {profile.id}: {profile.profile_name} ({profile.traffic_class.value})")
+        logger.info(f"UE {profile.id}: {profile.profile_name} ({profile.traffic_class.value})")
+

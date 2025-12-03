@@ -49,6 +49,8 @@ class SimulationConfig:
     ue_simulator_type: Literal["ueransim", "packetrusher", "free-ran-ue"] = "packetrusher"
     # Interface ID 起始編號（第一個 UE 使用的 interface id）
     interface_id_start: int = 4
+    # 日誌等級 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+    log_level: str = "INFO"
 
 @dataclass
 class ParsedConfig:

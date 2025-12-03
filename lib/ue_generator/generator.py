@@ -36,6 +36,10 @@ def generate_ue_profiles(config: ParsedConfig) -> List[UEProfile]:
     
     # Generate UEs according to allocation
     for profile_name, ue_count in config.ue_allocation.distribution.items():
+        # 跳過 count = 0 的 profile
+        if ue_count == 0:
+            continue
+            
         if profile_name not in profile_map:
             raise ValueError(f"Profile '{profile_name}' in allocation not found in profiles")
         

@@ -1,6 +1,5 @@
 import socket
 import os
-import random
 from typing import Optional
 from .utils import get_interface_ip, bind_socket_to_interface
 
@@ -30,8 +29,8 @@ class UDPSender:
 
     def send_packet(self, *, target_ip: str, payload_size: int, target_port: Optional[int] = None):
         try:
-            # 生成隨機 payload
-            payload = bytes(random.getrandbits(8) for _ in range(payload_size))
+            # 生成全 0 的 payload（最高效方式）
+            payload = bytes(payload_size)
             
             # 綁定源端口為目標端口（src_port = dst_port）
             try:

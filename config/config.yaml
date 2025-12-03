@@ -38,39 +38,23 @@ ue:
       low_traffic: 0
   profiles:
     - name: high_traffic
-      packet_arrival_rate: 50
-      packet_size: 
-        distribution: uniform
-        min: 80
-        max: 160
-      burst:
-        enable: true
-        burst_chance: 0.4              # 機率進入 burst
-        burst_arrival_rate: 100       # burst 狀態下的 λ
-        burst_on_duration:
-          min: 0.5
-          max: 1.5
-        burst_off_duration:
-          min: 2
-          max: 10
-    - name: mid_traffic
-      packet_arrival_rate: 3
+      packet_arrival_rate: 1
       packet_size: 
         distribution: uniform
         min: 1000
-        max: 1500
+        max: 1400
       burst:
         enable: true
-        burst_chance: 0.1              # 機率進入 burst
-        burst_arrival_rate: 10        # burst 狀態下的 λ
+        burst_chance: 0.95              # 機率進入 burst
+        burst_arrival_rate: 2000       # burst 狀態下的 λ
         burst_on_duration:
-          min: 1.0
-          max: 2.0
+          min: 0.5
+          max: 0.8
         burst_off_duration:
-          min: 10.0
-          max: 20.0
+          min: 1.5
+          max: 2.5
     - name: low_traffic
-      packet_arrival_rate: 1
+      packet_arrival_rate: 20
       packet_size: 
         distribution: uniform
         min: 50

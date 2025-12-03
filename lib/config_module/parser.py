@@ -92,20 +92,27 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
 
         profiles.append(profile)
 
-    # 驗證 profiles 中的名稱是否與 allocation 中的一致
+    # 驗證 profiles 與 allocation 的一致性
+    # 只檢查分配數量 > 0 的 profile 是否有定義
     profile_names = {p.name for p in profiles}
     allocation_names = set(ue_allocation.distribution.keys())
     
-    if profile_names != allocation_names:
-        missing_in_profiles = allocation_names - profile_names
-        missing_in_allocation = profile_names - allocation_names
-        
-        error_msg = []
-        if missing_in_profiles:
-            error_msg.append(f"Allocation 中定義但 profiles 中缺少: {missing_in_profiles}")
-        if missing_in_allocation:
-            error_msg.append(f"Profiles 中定義但 allocation 中缺少: {missing_in_allocation}")
-        
+    # 過濾出分配數量 > 0 的 profile
+    active_allocation_names = {name for name, count in ue_allocation.distribution.items() if count > 0}
+    
+    # 檢查是否有使用中的 profile 缺少定義
+    missing_in_profiles = active_allocation_names - profile_names
+    
+    # 檢查是否有定義的 profile 在 allocation 中完全不存在
+    missing_in_allocation = profile_names - allocation_names
+    
+    error_msg = []
+    if missing_in_profiles:
+        error_msg.append(f"Allocation 中使用 (count > 0) 但 profiles 中缺少定義: {missing_in_profiles}")
+    if missing_in_allocation:
+        error_msg.append(f"Profiles 中定義但 allocation 中完全未提及: {missing_in_allocation}")
+    
+    if error_msg:
         raise ValueError("; ".join(error_msg))
 
     return ParsedConfig(simulation=simulation, ue_allocation=ue_allocation, profiles=profiles)

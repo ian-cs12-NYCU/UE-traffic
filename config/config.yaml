@@ -3,6 +3,26 @@ simulation:
   duration_sec: 180 
   display_interval_sec: 10
   packet_type: udp # ping, udp, tcp
+  
+  # 批次發送大小 (Batch Size)
+  # 為了解決 time.sleep() 精度問題，改用批次發送模式
+  # 原理：一次發送多個封包，然後 sleep 較長的時間（例如 10ms），這樣 OS 能更準確控制時間
+  # 
+  # 計算方式：
+  # - 假設 packet_arrival_rate = 2000 pps (packets per second)
+  # - 設定 batch_size = 20
+  # - 則每批次間隔 = batch_size / packet_arrival_rate = 20/2000 = 0.01 秒 (10ms)
+  # - 10ms 對作業系統來說容易精確控制，比 0.5ms 準確得多
+  #
+  # 建議值：
+  # - 高流量場景 (>1000 pps)：建議 20-50，可獲得 10-50ms 的 sleep 間隔
+  # - 中流量場景 (100-1000 pps)：建議 5-20
+  # - 低流量場景 (<100 pps)：建議 1-5
+  #
+  # 注意：此參數不影響流量分佈計算，只影響發送時機的精度
+  # 實際流量仍由 packet_arrival_rate 控制，batch_size 只是實作細節
+  batch_size: 40
+  
   # 支援 CIDR 網段表示法，例如 10.201.10.0/24
   # 流量會均勻分布到網段內的所有 IP 地址
   target_subnets:

@@ -40,6 +40,7 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
         packet_type=sim["packet_type"],
         target_subnets=sim["target_subnets"],
         target_ports=sim.get("target_ports", "9000"),  # 默認端口 9000
+        batch_size=sim.get("batch_size", 20),  # 默認批次大小 20
         ue_simulator_type=sim.get("ue_simulator_type", "packetrusher"),
         interface_id_start=sim.get("interface_id_start", 4)
     )

@@ -112,6 +112,25 @@ class Simulator:
         self.display = Display(self.recorder, self.lock, cfg.simulation.display_interval_sec)
  
     def simulate_ue(self, ue: UEProfile):
+        """
+        模擬單一 UE 的封包發送行為（使用批次發送提高精度）
+        
+        批次發送原理：
+        1. 使用 Poisson process 生成封包間隔時間（維持理論流量分佈）
+        2. 累積 batch_size 個封包的間隔時間
+        3. 快速連續發送這一批封包
+        4. Sleep 累積的總時間減去實際發送耗時
+        
+        優點：
+        - time.sleep() 使用較長的時間（如 10ms），作業系統能更精確控制
+        - 實際達成的 bitrate 更接近理論值
+        - 不影響 Poisson 分佈特性（間隔時間仍由 Poisson process 產生）
+        
+        範例：
+        - packet_arrival_rate = 2000 pps, batch_size = 20
+        - 每批次間隔 = 20/2000 = 0.01 秒 (10ms)
+        - 10ms 比 0.5ms 更容易精確控制
+        """
         # 根據 simulator type 建立介面名稱
         iface = format_interface_name(self.cfg.simulation.ue_simulator_type, ue.id)
         if ue.packet_arrival_rate <= 0:
@@ -129,48 +148,81 @@ class Simulator:
             print(f'[ERROR] Unexpected error initializing packet sender for UE {ue.id}: {e}')
             print(f'[ERROR] UE {ue.id} simulation stopped.')
             return
+        
         waiting_timer = PoissonWaitGenerator(
             arrival_rate=ue.packet_arrival_rate,
             burst_config=ue.burst
         )
         
+        # 批次發送相關變數
+        batch_size = self.cfg.simulation.batch_size
+        packets_to_send = []  # 待發送封包的佇列
+        
         while True:
+            # 使用 Poisson process 產生下一個封包的等待時間
             wait = waiting_timer.next_wait()
-            time.sleep(wait)
-            if time.time() > self.end_time: # 必須將判定放在 wait 之後，否則超過模擬時間依然會跑最後一次發送封包 
-                break
-
-            target_ip = random.choice(self.target_ips)
-            target_port = random.choice(self.target_ports)
             
-            if ue.packet_size.distribution == "uniform":
-                payload_size = random.randint(ue.packet_size.min, ue.packet_size.max)
-            else:
-                print(f"[ERROR] Unsupported packet size distribution: {ue.packet_size.distribution}")
-                return
-
-            print(f"[{iface}] Sending {self.packet_type} to {target_ip}:{target_port} with size {payload_size} bytes.")
-            ret = packet_sender.send_packet(
-                target_ip=target_ip,
-                payload_size=payload_size,
-                target_port=target_port
-            )
-
-            if ret['success'] is True:
-                print(f"[{iface}] {self.packet_type} sent successfully: {ret}")
-                # 只在成功時才記錄封包
-                self.recorder.record_packet(
-                    ue.id,
-                    iface,
-                    payload_size,
-                    src_ip=ret['src_ip'],
-                    dst_ip=ret['dst_ip'],
-                    src_port=ret['src_port'],
-                    dst_port=ret['dst_port']
-                )
-            else:
-                print(f"[{iface}] {self.packet_type} failed: {ret}")
+            # 累積封包到批次中（不實際 sleep）
+            if time.time() + wait > self.end_time:
+                # 如果下一個封包會超過模擬時間，發送剩餘的封包後結束
                 break
+            
+            packets_to_send.append(wait)
+            
+            # 當累積到足夠的封包數量時，進行批次發送
+            if len(packets_to_send) >= batch_size:
+                # 計算批次間隔時間（理論上這批封包應該跨越的總時間）
+                batch_total_wait = sum(packets_to_send)
+                
+                batch_start = time.time()
+                
+                # 批次發送所有封包
+                for _ in range(len(packets_to_send)):
+                    if time.time() > self.end_time:
+                        break
+                    
+                    target_ip = random.choice(self.target_ips)
+                    target_port = random.choice(self.target_ports)
+                    
+                    if ue.packet_size.distribution == "uniform":
+                        payload_size = random.randint(ue.packet_size.min, ue.packet_size.max)
+                    else:
+                        print(f"[ERROR] Unsupported packet size distribution: {ue.packet_size.distribution}")
+                        return
+
+                    print(f"[{iface}] Sending {self.packet_type} to {target_ip}:{target_port} with size {payload_size} bytes.")
+                    ret = packet_sender.send_packet(
+                        target_ip=target_ip,
+                        payload_size=payload_size,
+                        target_port=target_port
+                    )
+
+                    if ret['success'] is True:
+                        print(f"[{iface}] {self.packet_type} sent successfully: {ret}")
+                        # 只在成功時才記錄封包
+                        self.recorder.record_packet(
+                            ue.id,
+                            iface,
+                            payload_size,
+                            src_ip=ret['src_ip'],
+                            dst_ip=ret['dst_ip'],
+                            src_port=ret['src_port'],
+                            dst_port=ret['dst_port']
+                        )
+                    else:
+                        print(f"[{iface}] {self.packet_type} failed: {ret}")
+                        break
+                
+                # 計算實際發送耗時
+                elapsed = time.time() - batch_start
+                
+                # 扣除發送耗時後，sleep 剩餘時間以維持正確的發送速率
+                sleep_time = batch_total_wait - elapsed
+                if sleep_time > 0:
+                    time.sleep(sleep_time)
+                
+                # 清空佇列，準備下一批
+                packets_to_send = []
 
     def validate_ue_profiles(self):
         # 首先檢查是否有足夠的權限綁定到網路介面

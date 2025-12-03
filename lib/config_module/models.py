@@ -44,6 +44,7 @@ class SimulationConfig:
     packet_type: str
     target_subnets: List[str]  # CIDR 網段列表，例如 ["10.201.10.0/24", "192.168.1.0/24"]
     target_ports: str  # 端口配置字串，例如 "80, 443, 8000-8010"
+    batch_size: int  # 批次發送大小，用於提高 time.sleep() 精度
     # UE simulator type determines interface naming: 'ueransim', 'packetrusher', or 'free-ran-ue'
     ue_simulator_type: Literal["ueransim", "packetrusher", "free-ran-ue"] = "packetrusher"
     # Interface ID 起始編號（第一個 UE 使用的 interface id）

@@ -3,8 +3,31 @@ import time
 import threading
 import pandas as pd
 import matplotlib.pyplot as plt
+import logging
 
 from ..recorder import Recorder
+
+logger = logging.getLogger("UE-traffic")
+
+
+def format_bitrate(bitrate_bps: float) -> str:
+    """將 bitrate 格式化為易讀的單位 (bps, Kbps, Mbps)"""
+    if bitrate_bps >= 1_000_000:
+        return f"{bitrate_bps / 1_000_000:.2f} Mbps"
+    elif bitrate_bps >= 1_000:
+        return f"{bitrate_bps / 1_000:.2f} Kbps"
+    else:
+        return f"{bitrate_bps:.2f} bps"
+
+
+def format_bytes(bytes_val: int) -> str:
+    """將位元組數格式化為易讀的單位 (B, KB, MB)"""
+    if bytes_val >= 1_000_000:
+        return f"{bytes_val / 1_000_000:.2f} MB"
+    elif bytes_val >= 1_000:
+        return f"{bytes_val / 1_000:.2f} KB"
+    else:
+        return f"{bytes_val} B"
 
 
 class Display:
@@ -15,28 +38,46 @@ class Display:
     
     def start_live_bar_chart(self):
         """
-        Start a live bar chart display of UE packet counts.
+        Start a live statistics display of UE packet counts with interval statistics.
+        Displays as log entries instead of clearing screen.
         """
         while True:
-            os.system('clear')
-            print("UE Packet Count Monitor")
-            print("=" * 40)
-            ue_packet_cnt = self.recorder.get_ue_packet_cnt()
+            # 獲取 interval 統計數據
+            interval_stats = self.recorder.get_interval_stats()
             
-            for id, cnt in ue_packet_cnt.items():
-                bar = "▇" * max(0, cnt // 2)
-                print(f"UE {id:<12}: {bar:<40} {cnt} pkt")
+            total_packets = 0
+            total_bytes = 0
+            total_bitrate = 0.0
+            
+            # 計算統計
+            for ue_id, stats in sorted(interval_stats.items()):
+                packets = stats['packets']
+                bytes_val = stats['bytes']
+                bitrate = stats['bitrate_bps']
+                
+                total_packets += packets
+                total_bytes += bytes_val
+                total_bitrate += bitrate
+            
+            # 以日誌形式輸出統計（只在有封包時）
+            if total_packets > 0:
+                logger.warning(f"[INTERVAL {self.interval:.1f}s] Packets: {total_packets:>6} | Data: {format_bytes(total_bytes):>12} | Bitrate: {format_bitrate(total_bitrate):>12}")
+            
+            # 重置 interval 統計
+            self.recorder.reset_interval_stats()
+            
             time.sleep(self.interval)
+
     def plot_scatter_plot(self, csv_path: str = "log/packet_records.csv", save_path: str = "images/packet_timeline.png"):
         try:
             df = pd.read_csv(csv_path)
         except Exception as e:
-            print(f"[ERROR] Failed to read CSV: {e}")
+            logger.error(f"Failed to read CSV: {e}")
             return
 
         required_cols = {"timestamp", "ue_id", "size_bytes"}
         if not required_cols.issubset(df.columns):
-            print("[ERROR] CSV file missing required columns.")
+            logger.error("CSV file missing required columns.")
             return
 
         # 數值轉換與清洗
@@ -70,13 +111,18 @@ class Display:
         plt.grid(True)
         plt.tight_layout()
         plt.savefig(save_path, dpi=300)
-        print(f"[Display] Packet timeline scatter plot saved to {save_path}")
+        logger.info(f"Packet timeline scatter plot saved to {save_path}")
 
     def plot_scatter_and_volume_bar(
             self,
             csv_path="log/packet_records.csv", 
             save_path="images/scatter_volume_subplot.png"):
-        df = pd.read_csv(csv_path)
+        try:
+            df = pd.read_csv(csv_path)
+        except Exception as e:
+            logger.error(f"Failed to read CSV: {e}")
+            return
+
         df = df.dropna(subset=["timestamp", "ue_id", "size_bytes"])
         df["timestamp"] = pd.to_numeric(df["timestamp"], errors="coerce")
         df["size_bytes"] = pd.to_numeric(df["size_bytes"], errors="coerce")
@@ -122,4 +168,28 @@ class Display:
 
         plt.tight_layout()
         plt.savefig(save_path, dpi=300)
-        print(f"[Display] Scatter + volume bar saved to {save_path}")
+        logger.info(f"Scatter + volume bar saved to {save_path}")
+
+    def print_final_statistics(self):
+        """打印最終統計報告"""
+        stats = self.recorder.get_final_statistics()
+        
+        print("\n" + "=" * 80)
+        print(f"{'FINAL STATISTICS REPORT':^80}")
+        print("=" * 80)
+        print(f"{'UE ID':<8} {'Total Packets':<15} {'Total Data':<15} {'Avg Bitrate':<15}")
+        print("-" * 80)
+        
+        for ue_id, ue_stats in sorted(stats['per_ue'].items()):
+            packets = ue_stats['packets']
+            bytes_val = ue_stats['bytes']
+            bitrate = ue_stats['avg_bitrate_bps']
+            
+            print(f"UE {ue_id:<5} {packets:<15} {format_bytes(bytes_val):<15} {format_bitrate(bitrate):<15}")
+        
+        print("-" * 80)
+        total = stats['total']
+        print(f"{'TOTAL':<8} {total['packets']:<15} {format_bytes(total['bytes']):<15} {format_bitrate(total['avg_bitrate_bps']):<15}")
+        print("=" * 80)
+        print(f"Total Duration: {total['duration']:.2f} seconds")
+        print("=" * 80)

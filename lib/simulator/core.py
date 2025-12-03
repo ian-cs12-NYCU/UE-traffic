@@ -74,6 +74,7 @@ class Simulator:
         # Thread Management Variables
         self.lock = threading.Lock()
         self.threads: List[threading.Thread] = []
+        self.stop_flag = threading.Event()  # 用於優雅停止所有線程
 
         self.ue_profiles = ue_profiles
         self.duration = cfg.simulation.duration_sec
@@ -161,7 +162,7 @@ class Simulator:
         batch_size = self.cfg.simulation.batch_size
         packets_to_send = []  # 待發送封包的佇列
         
-        while True:
+        while not self.stop_flag.is_set():
             # 使用 Poisson process 產生下一個封包的等待時間
             wait = waiting_timer.next_wait()
             
@@ -181,7 +182,7 @@ class Simulator:
                 
                 # 批次發送所有封包
                 for _ in range(len(packets_to_send)):
-                    if time.time() > self.end_time:
+                    if time.time() > self.end_time or self.stop_flag.is_set():
                         break
                     
                     target_ip = random.choice(self.target_ips)
@@ -292,6 +293,17 @@ class Simulator:
 
         # plot the scatter plot
         self.display.plot_scatter_and_volume_bar()
+
+    def stop_all_threads(self):
+        """優雅地停止所有模擬線程"""
+        logger.info("Stopping all simulation threads...")
+        self.stop_flag.set()  # 設置停止標誌
+        
+        # 等待所有線程結束（最多等待 5 秒）
+        for t in self.threads:
+            t.join(timeout=5.0)
+        
+        logger.info("All threads stopped.")
 
 
 if __name__ == "__main__":

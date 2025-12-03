@@ -2,6 +2,8 @@ import threading
 import random
 import os
 import time
+import signal
+import sys
 from lib.config_module import parse_config
 from lib.ue_generator import generate_ue_profiles
 from lib.simulator import Simulator
@@ -23,6 +25,29 @@ sim = Simulator(
     cfg = cfg,
 )
 
+# === Signal handler for Ctrl+C ===
+def signal_handler(sig, frame):
+    import logging
+    logger = logging.getLogger("UE-traffic")
+    print("\n")  # 換行讓輸出更清晰
+    logger.warning("Received interrupt signal (Ctrl+C). Stopping simulation...")
+    
+    # 停止所有線程
+    sim.stop_all_threads()
+    
+    # 顯示最終統計
+    print("\n")  # 額外換行
+    sim.display.print_final_statistics()
+    
+    # 保存 CSV
+    logger.info("Saving packet records to CSV...")
+    sim.recorder.save_csv()
+    
+    logger.info("Simulation terminated by user.")
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+
 # === Run simulation and display ===
 
 runnung_status = sim.run()             # start all UE threads
@@ -34,3 +59,7 @@ import logging
 logger = logging.getLogger("UE-traffic")
 logger.info("Simulation started. Waiting for threads to start...")
 sim.wait_for_completion()
+
+# === Normal completion ===
+print("\n")  # 換行讓輸出更清晰
+sim.display.print_final_statistics()

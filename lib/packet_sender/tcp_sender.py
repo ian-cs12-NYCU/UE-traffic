@@ -109,7 +109,7 @@ class TCPSender:
             # 發送封包
             sock.sendto(tcp_packet, (target_ip, 0))
             
-            print(f"[{self.iface}] Sent TCP SYN with {payload_size} bytes payload from {src_ip}:{src_port} to {target_ip}:{target_port}")
+            self.logger.debug(f"[{self.iface}] Sent TCP SYN with {payload_size} bytes payload from {src_ip}:{src_port} to {target_ip}:{target_port}")
             
             return {
                 'src_ip': src_ip,
@@ -121,7 +121,7 @@ class TCPSender:
             }
             
         except Exception as e:
-            print(f"[{self.iface}] TCP SYN send failed: {e}")
+            self.logger.error(f"[{self.iface}] TCP SYN send failed: {e}")
             return {
                 'src_ip': self.interface_ip,
                 'src_port': target_port,

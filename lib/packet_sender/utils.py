@@ -4,10 +4,7 @@ Utility functions shared across packet sender modules
 import socket
 import subprocess
 import os
-import logging
 from typing import Optional
-
-logger = logging.getLogger("UE-traffic")
 
 
 def check_interface_binding_permission() -> bool:
@@ -108,17 +105,17 @@ def bind_socket_to_interface(sock: socket.socket, iface: str, strict: bool = Tru
     """
     try:
         sock.setsockopt(socket.SOL_SOCKET, 25, iface.encode())  # 25 = SO_BINDTODEVICE
-        logger.debug(f"Successfully bound socket to interface '{iface}'")
+        print(f"[INFO] Successfully bound socket to interface '{iface}'")
         return True
     except PermissionError as e:
         error_msg = f"Cannot bind to interface '{iface}' - need root privileges"
-        logger.error(error_msg)
+        print(f"[ERROR] {error_msg}")
         if strict:
             raise PermissionError(error_msg) from e
         return False
     except OSError as e:
         error_msg = f"OS does not support binding to interface '{iface}'"
-        logger.error(error_msg)
+        print(f"[ERROR] {error_msg}")
         if strict:
             raise OSError(error_msg) from e
         return False

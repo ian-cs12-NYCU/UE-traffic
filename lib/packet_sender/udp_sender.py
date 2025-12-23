@@ -2,7 +2,7 @@ import socket
 import os
 import logging
 from typing import Optional, Dict
-from .utils import get_interface_ip, bind_socket_to_interface
+from .utils import get_interface_ip, bind_socket_to_interface, calculate_payload_size_from_total_size
 
 logger = logging.getLogger("UE-traffic")
 
@@ -29,8 +29,12 @@ class UDPSender:
 
     def send_packet(self, *, target_ip: str, payload_size: int, target_port: Optional[int] = None):
         try:
+            # 計算實際 payload 大小（減去 UDP header）
+            # payload_size 參數現在表示總封包大小，而不是 payload 大小
+            actual_payload_size = calculate_payload_size_from_total_size('udp', payload_size)
+            
             # 生成全 0 的 payload（最高效方式）
-            payload = bytes(payload_size)
+            payload = bytes(actual_payload_size)
             
             # 使用單一 socket 發送到任意目標端口
             # 源端口由系統自動分配（第一次發送後固定）

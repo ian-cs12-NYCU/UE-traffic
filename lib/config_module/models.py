@@ -7,6 +7,20 @@ from typing import List, Literal, Optional, Dict
 
 @dataclass
 class PacketSize:
+    """
+    封包大小配置
+    
+    重要：min 和 max 指定的是「完整數據包大小」(包含所有 header)，而非 payload 大小。
+    程序會自動減去 IP 和協議 header，計算實際應該發送的 payload 大小：
+    
+    - UDP: 最終 payload = 配置大小 - IP_HEADER(20) - UDP_HEADER(8) = 配置大小 - 28
+    - TCP: 最終 payload = 配置大小 - IP_HEADER(20) - TCP_HEADER(20) = 配置大小 - 40
+    
+    例如：
+    - 配置 min=54, max=60 (UDP)
+      → 網路上看到的數據包大小: 54-60 bytes (包含所有 header)
+      → 實際 payload: 54-28=26 ~ 60-28=32 bytes
+    """
     distribution: Literal["uniform", "normal"]
     min: int
     max: int

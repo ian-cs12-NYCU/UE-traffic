@@ -87,6 +87,50 @@ def format_interface_name(simulator_type: str, id_val: int) -> str:
         return f"uesimtun{id_val}"
 
 
+def calculate_payload_size_from_total_size(protocol: str, total_packet_size: int) -> int:
+    """
+    根據總封包大小計算實際 payload 大小
+    
+    系統會自動減去 IP header 和協議 header（UDP/TCP）
+    以確保最終發送的完整數據包大小符合配置
+    
+    Args:
+        protocol: 協議類型 ('udp' 或 'tcp')
+        total_packet_size: 配置中指定的完整數據包大小（單位: bytes）
+        
+    Returns:
+        應該使用的實際 payload 大小
+        
+    計算公式：
+        - UDP: total_size - IP_HEADER(20) - UDP_HEADER(8) = total_size - 28
+        - TCP: total_size - IP_HEADER(20) - TCP_HEADER(20) = total_size - 40
+    """
+    IP_HEADER_SIZE = 20
+    UDP_HEADER_SIZE = 8
+    TCP_HEADER_SIZE = 20
+    
+    protocol_lower = protocol.lower()
+    
+    if protocol_lower == 'udp':
+        header_size = IP_HEADER_SIZE + UDP_HEADER_SIZE
+        payload_size = total_packet_size - header_size
+    elif protocol_lower == 'tcp':
+        header_size = IP_HEADER_SIZE + TCP_HEADER_SIZE
+        payload_size = total_packet_size - header_size
+    else:
+        raise ValueError(f"Unsupported protocol: {protocol}. Must be 'udp' or 'tcp'")
+    
+    # 確保 payload 大小非負
+    if payload_size < 0:
+        raise ValueError(
+            f"Total packet size ({total_packet_size} bytes) is smaller than "
+            f"{protocol_lower.upper()} header size ({header_size} bytes). "
+            f"Please increase total packet size."
+        )
+    
+    return payload_size
+
+
 def bind_socket_to_interface(sock: socket.socket, iface: str, strict: bool = True) -> bool:
     """
     將 socket 綁定到指定的網路介面

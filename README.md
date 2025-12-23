@@ -109,6 +109,7 @@ $ source .venv/bin/activate
 
 // 指定不同的配置檔
 (UE-traffic) $ sudo /home/vagrant/UE-traffic/.venv/bin/python3 main.py --config config/config_50_percent_burst.yaml
+(UE-traffic) $ sudo /home/vagrant/UE-traffic/.venv/bin/python3 main.py --config config/config_80_percent_burst.yaml
 ```
 
 若只需要基本多 UE ping 功能，不需要流量控制，可以使用 simple-ping/ 目錄下的 `./multiple-UE.sh`

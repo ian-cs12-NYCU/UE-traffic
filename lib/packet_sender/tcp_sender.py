@@ -3,7 +3,7 @@ import os
 import struct
 import logging
 from typing import Optional
-from .utils import get_interface_ip, bind_socket_to_interface
+from .utils import get_interface_ip, bind_socket_to_interface, calculate_payload_size_from_total_size
 
 logger = logging.getLogger("UE-traffic")
 
@@ -105,17 +105,21 @@ class TCPSender:
         使用預先創建的 raw socket 直接發送
         """
         try:
+            # 計算實際 payload 大小（減去 TCP header）
+            # payload_size 參數現在表示總封包大小，而不是 payload 大小
+            actual_payload_size = calculate_payload_size_from_total_size('tcp', payload_size)
+            
             # 使用目標端口作為源端口
             src_port = target_port
             src_ip = self.interface_ip
             
             # 構建 TCP SYN 封包
-            tcp_packet = self._build_tcp_syn_packet(src_ip, target_ip, src_port, target_port, payload_size)
+            tcp_packet = self._build_tcp_syn_packet(src_ip, target_ip, src_port, target_port, actual_payload_size)
             
             # 發送封包（使用預先創建的 socket）
             self.sock.sendto(tcp_packet, (target_ip, 0))
             
-            logger.debug(f"[{self.iface}] Sent TCP SYN with {payload_size} bytes payload from {src_ip}:{src_port} to {target_ip}:{target_port}")
+            logger.debug(f"[{self.iface}] Sent TCP SYN with {actual_payload_size} bytes payload (total packet size: {payload_size} bytes) from {src_ip}:{src_port} to {target_ip}:{target_port}")
             
             return {
                 'src_ip': src_ip,

@@ -162,6 +162,59 @@ sudo perf record -p $(pgrep -f "python.*main.py")
 sudo perf report
 ```
 
+## TCP 攻擊模式效能差異
+
+本專案支援兩種 TCP 攻擊模式，各有不同的效能特性：
+
+### SYN Flood 模式 (預設)
+```yaml
+tcp_attack_mode: syn
+```
+**效能特性：**
+- ✅ **高效率**：使用 raw socket 直接發送 SYN 封包
+- ✅ **低開銷**：不需要建立完整連線（無三次握手）
+- ✅ **高封包率**：適合高頻率攻擊測試（每個 UE 可達 500+ PPS）
+- ⚠️ **需要 root 權限**：raw socket 需要特權操作
+
+**適用場景：** 傳統 DDoS 攻擊模擬、壓力測試
+
+### Lazy Mimic TLS 模式
+```yaml
+tcp_attack_mode: lazy_mimic_tls
+```
+**效能特性：**
+- ⚠️ **較低效率**：需要完整 TCP 三次握手
+- ⚠️ **較高延遲**：每次連線需要 RTT 時間
+- ⚠️ **封包率限制**：建議每個 UE 不超過 100-200 PPS
+- ✅ **更真實**：模擬真實的應用層攻擊行為
+- ✅ **適合 LLM 測試**：產生有結構的偽造流量
+
+**適用場景：** L7 攻擊模擬、LLM 防禦測試、Payload 結構分析
+
+**效能建議：**
+- 使用 Lazy Mimic TLS 時，建議降低 `packet_arrival_rate`（如 50-100 PPS）
+- 增加 `batch_size` 以減少頻繁的 socket 操作
+- 避免同時運行過多 UE（建議不超過 20-30 個）
+- 關閉 `record_packet_details` 以節省記憶體
+
+**範例配置：**
+```yaml
+simulation:
+  packet_type: tcp
+  tcp_attack_mode: lazy_mimic_tls
+  batch_size: 40
+  record_packet_details: false
+  target_ports: "443"
+
+ue:
+  profiles:
+    - name: attacker_profile
+      packet_arrival_rate: 100  # 較低的發送率
+      burst:
+        enable: true
+        burst_arrival_rate: 200  # 爆發時也不超過 200 PPS
+```
+
 ## 相容性說明
 
 所有優化都向後相容，不影響現有功能：
@@ -186,6 +239,13 @@ sudo perf report
 - **問題根源**：高頻率的小物件分配（dict）導致 Python GC 頻繁觸發
 - **優化原理**：關閉詳細記錄後，只維護統計數據（整數加法），避免大量物件分配
 - **適用場景**：長時間高負載測試、壓力測試等不需要詳細記錄的場景
+
+### Lazy Mimic TLS 技術原理
+- **Magic Header**：`16 03 01` 模擬 TLS Handshake + TLS 1.0
+- **Length Field**：2 bytes Big-Endian，記錄後續垃圾資料長度
+- **Garbage Body**：隨機生成的亂碼（非真實 TLS Client Hello）
+- **欺騙效果**：簡單的 DPI 會認為是 TLS 流量，但深度解析會發現格式錯誤
+- **開銷分析**：每次連線需要 3 個 TCP 封包（SYN, SYN-ACK, ACK）+ 1 個 PSH (payload) + 1 個 FIN
 
 ## 後續優化方向
 

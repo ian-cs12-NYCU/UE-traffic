@@ -49,7 +49,8 @@ def parse_config(path: str = "config/config.yaml") -> ParsedConfig:
         ue_simulator_type=sim.get("ue_simulator_type", "packetrusher"),
         interface_id_start=sim.get("interface_id_start", 4),
         log_level=sim.get("log_level", "INFO"),  # 默認 INFO
-        record_packet_details=sim.get("record_packet_details", True)  # 默認記錄詳細資訊
+        record_packet_details=sim.get("record_packet_details", True),  # 默認記錄詳細資訊
+        tcp_attack_mode=sim.get("tcp_attack_mode", "syn")  # 默認 SYN 模式
     )
     # 解析 UE allocation 配置
     ue_config = raw["ue"]

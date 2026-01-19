@@ -68,6 +68,8 @@ class SimulationConfig:
     log_level: str = "INFO"
     # 是否記錄每個封包的詳細資訊到 CSV（關閉可節省記憶體和 CPU）
     record_packet_details: bool = False
+    # TCP 攻擊模式：'syn' (傳統 SYN flood) 或 'lazy_mimic_tls' (偽造 TLS 握手)
+    tcp_attack_mode: Literal["syn", "lazy_mimic_tls"] = "syn"
 
 @dataclass
 class ParsedConfig:

@@ -1,0 +1,53 @@
+simulation:
+  record_csv_path: log/packet_records.csv
+  duration_sec: 60
+  display_interval_sec: 10
+  
+  # === 封包類型與攻擊模式 ===
+  packet_type: tcp  # ping, udp, tcp
+  
+  # TCP 攻擊模式 (僅當 packet_type=tcp 時有效)
+  # - syn: 傳統 TCP SYN flood 攻擊 (預設)
+  # - lazy_mimic_tls: 偽造 TLS 握手攻擊 (建立連線 + 發送偽造 TLS payload + 斷線)
+  tcp_attack_mode: lazy_mimic_tls
+  
+  # === 效能優化配置 ===
+  batch_size: 20
+  record_packet_details: false
+  
+  # === 目標配置 ===
+  # 支援 CIDR 網段表示法
+  target_subnets:
+    - 10.201.10.0/24
+  
+  # 目標端口 - Lazy Mimic TLS 通常針對 HTTPS (443)
+  target_ports: "443"
+  
+  # UE simulator 類型
+  ue_simulator_type: free-ran-ue
+  interface_id_start: 0
+
+ue:
+  allocation:
+    total_count: 5
+    distribution:
+      attacker_profile: 5
+  profiles:
+    # Attacker A: Lazy Mimic TLS 攻擊者配置
+    # 模擬低強度但持續的偽造 TLS 流量
+    - name: attacker_profile
+      packet_arrival_rate: 100  # 基礎攻擊率：100 PPS
+      packet_size: 
+        distribution: uniform
+        min: 54   # 最小封包大小
+        max: 60   # 最大封包大小
+      burst:
+        enable: true
+        burst_chance: 0.8  # 80% 時間處於爆發狀態
+        burst_arrival_rate: 300  # 爆發時：300 PPS
+        burst_on_duration:
+          min: 2.0
+          max: 5.0
+        burst_off_duration:
+          min: 1.0
+          max: 2.0

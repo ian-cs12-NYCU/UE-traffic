@@ -146,7 +146,9 @@ class Simulator:
 
         # Get the packet sender based on the packet type and interface, ex: "pingSender", "tcpSender", "udpSender"
         try:
-            packet_sender = get_packet_sender(self.packet_type, iface)
+            # 傳遞 tcp_attack_mode 參數給 factory
+            tcp_attack_mode = getattr(self.cfg.simulation, 'tcp_attack_mode', 'syn')
+            packet_sender = get_packet_sender(self.packet_type, iface, tcp_attack_mode=tcp_attack_mode)
         except (PermissionError, OSError) as e:
             logger.error(f'Failed to initialize packet sender for UE {ue.id}: {e}')
             logger.error(f'UE {ue.id} simulation stopped.')
